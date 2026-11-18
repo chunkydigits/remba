@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Remba.Api/Remba.Api.csproj" />
+  <Project Path="Remba.Model/Remba.Model.csproj" />
+  <Project Path="Remba.Repository/Remba.Repository.csproj" />
+  <Project Path="Remba.Service.Tests/Remba.Service.Tests.csproj" />
+  <Project Path="Remba.Service/Remba.Service.csproj" />
+  <Project Path="Remba.Utility/Remba.Utility.csproj" />
+</Solution>

@@ -1,0 +1,51 @@
+<app-page-template title="Your account">
+  @if (bootstrapUser$ | async) {}
+
+  @if (user$ | async; as user) {
+    <section class="account">
+      <p class="account__meta">Remba ID: {{ user.id }}</p>
+      @if (user.email) {
+        <p class="account__meta">Email: {{ user.email }}</p>
+      }
+
+      <form class="account__form" [formGroup]="form" (ngSubmit)="onSave()">
+        <mat-form-field appearance="outline">
+          <mat-label>Display name</mat-label>
+          <input matInput formControlName="displayName" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Username</mat-label>
+          <input matInput formControlName="username" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Bio</mat-label>
+          <textarea matInput rows="4" formControlName="bio"></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Profile visibility</mat-label>
+          <mat-select formControlName="visibility">
+            <mat-option value="private">Private</mat-option>
+            <mat-option value="public">Public</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-flat-button color="primary" type="submit">Save changes</button>
+      </form>
+
+      @if (saveSuccess) {
+        <p class="account__success">Profile updated.</p>
+      }
+      @if (saveError) {
+        <p class="account__error">{{ saveError }}</p>
+      }
+    </section>
+  } @else {
+    <p>Loading your Remba account…</p>
+  }
+
+  <!-- Keep save stream alive without manual subscriptions -->
+  @if (saveResult$ | async) {}
+</app-page-template>

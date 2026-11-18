@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Remba.Repository\Remba.Repository.csproj" />
+    <ProjectReference Include="..\Remba.Model\Remba.Model.csproj" />
+    <ProjectReference Include="..\Remba.Utility\Remba.Utility.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

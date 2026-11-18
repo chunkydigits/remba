@@ -1,0 +1,29 @@
+<app-page-template>
+  <!-- Ensure first authenticated visit creates/resolves the Remba user -->
+  @if (bootstrapUser$ | async) {}
+
+  <section class="home">
+    @if (theme$ | async; as theme) {
+      <img [src]="heroLogoSrc(theme)" alt="Remba" class="home__logo" />
+    }
+    <p class="home__tagline">
+      Create, organise and share lists of the things you care about.
+    </p>
+
+    @if (!authConfigured) {
+      <p class="home__note">
+        Add your Auth0 domain, client ID and API audience in
+        <code>src/environments</code> to enable sign-in.
+      </p>
+    } @else if (isAuthenticated$ | async) {
+      @if (currentUser$ | async; as user) {
+        <p class="home__welcome">Signed in as {{ user.displayName }} (@{{ user.username }})</p>
+        <a mat-stroked-button routerLink="/account">Manage account</a>
+      } @else {
+        <p class="home__note">Preparing your Remba account…</p>
+      }
+    } @else {
+      <button mat-flat-button color="primary" type="button" (click)="login()">Sign in</button>
+    }
+  </section>
+</app-page-template>

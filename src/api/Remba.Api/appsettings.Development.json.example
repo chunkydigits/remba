@@ -1,0 +1,10 @@
+{
+  "Auth0": {
+    "Domain": "your-tenant.auth0.com",
+    "Audience": "https://api.remba.local"
+  },
+  "CosmosDb": {
+    "Endpoint": "https://localhost:8081",
+    "Key": "your-cosmos-key"
+  }
+}

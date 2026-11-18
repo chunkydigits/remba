@@ -1,0 +1,22 @@
+# .NET
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+
+# Node / Angular
+**/node_modules/
+**/dist/
+.angular/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Secrets / local overrides
+**/appsettings.*.local.json
+**/.env
+**/.env.*

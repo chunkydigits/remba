@@ -1,0 +1,24 @@
+<app-page-template title="Settings">
+  <section class="settings">
+    <h2 class="settings__section-title">Appearance</h2>
+    <p class="settings__help">Choose how Remba looks on this device.</p>
+
+    @if (theme$ | async; as theme) {
+      <mat-button-toggle-group
+        class="settings__theme-toggle"
+        [value]="theme"
+        (change)="onThemeChange($event.value)"
+        aria-label="Colour theme"
+      >
+        <mat-button-toggle value="light">
+          <mat-icon>light_mode</mat-icon>
+          Light
+        </mat-button-toggle>
+        <mat-button-toggle value="dark">
+          <mat-icon>dark_mode</mat-icon>
+          Dark
+        </mat-button-toggle>
+      </mat-button-toggle-group>
+    }
+  </section>
+</app-page-template>

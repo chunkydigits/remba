@@ -1,0 +1,62 @@
+<div class="page-template">
+  @if (showHeader) {
+    <header class="page-template__header">
+      <div class="page-template__slot page-template__slot--start">
+        @if (authConfigured && (isAuthenticated$ | async)) {
+          <button
+            mat-icon-button
+            type="button"
+            [matMenuTriggerFor]="accountMenu"
+            aria-label="Open menu"
+          >
+            <mat-icon>menu</mat-icon>
+          </button>
+
+          <mat-menu #accountMenu="matMenu">
+            <a mat-menu-item routerLink="/account">Account</a>
+            <a mat-menu-item routerLink="/settings">Settings</a>
+            <button mat-menu-item type="button" (click)="logout()">Sign out</button>
+          </mat-menu>
+        }
+      </div>
+
+      <a routerLink="/" class="page-template__brand" aria-label="Remba home">
+        @if (theme$ | async; as theme) {
+          <img
+            [src]="markLogoSrc(theme)"
+            alt="Remba"
+            class="page-template__logo page-template__logo--mark"
+          />
+          <img
+            [src]="fullLogoSrc(theme)"
+            alt="Remba"
+            class="page-template__logo page-template__logo--full"
+          />
+        }
+      </a>
+
+      <div class="page-template__slot page-template__slot--end">
+        @if (!authConfigured) {
+          <span class="page-template__hint">Auth0 needed</span>
+        } @else if (isLoading$ | async) {
+          <mat-spinner diameter="22"></mat-spinner>
+        } @else if ((isAuthenticated$ | async) === false) {
+          <button mat-flat-button color="primary" type="button" (click)="login()">
+            Sign in
+          </button>
+        }
+      </div>
+    </header>
+  }
+
+  @if (authError$ | async; as authError) {
+    <div class="page-template__error" role="alert">{{ authError }}</div>
+  }
+
+  <main class="page-template__content">
+    @if (title) {
+      <h1 class="page-template__page-title">{{ title }}</h1>
+    }
+    <ng-content></ng-content>
+  </main>
+</div>

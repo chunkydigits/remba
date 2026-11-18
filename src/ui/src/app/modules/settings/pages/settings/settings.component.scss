@@ -1,0 +1,35 @@
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 28rem;
+}
+
+.settings__section-title {
+  margin: 0;
+  font: var(--mat-sys-title-large);
+}
+
+.settings__help {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.settings__theme-toggle {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.settings__theme-toggle mat-button-toggle {
+  min-height: 2.75rem;
+}
+
+.settings__theme-toggle mat-icon {
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  font-size: 1.15rem;
+  width: 1.15rem;
+  height: 1.15rem;
+}

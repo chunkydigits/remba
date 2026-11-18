@@ -1,0 +1,84 @@
+// Include theming for Angular Material with `mat.theme()`.
+// This Sass mixin will define CSS variables that are used for styling Angular Material
+// components according to the Material 3 design spec.
+// Learn more about theming and how to use it for your application's
+// custom components at https://material.angular.dev/guide/theming
+@use '@angular/material' as mat;
+
+html {
+  height: 100%;
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  // Brand dark surface: #03323b
+  --mat-sys-background: #03323b;
+  --mat-sys-on-background: #e7f3f5;
+  --mat-sys-surface: #03323b;
+  --mat-sys-on-surface: #e7f3f5;
+  --mat-sys-surface-dim: #02272e;
+  --mat-sys-surface-bright: #0a4a56;
+  --mat-sys-surface-container-lowest: #022229;
+  --mat-sys-surface-container-low: #043943;
+  --mat-sys-surface-container: #06404b;
+  --mat-sys-surface-container-high: #0a4a56;
+  --mat-sys-surface-container-highest: #105560;
+  --mat-sys-surface-variant: #1a4f59;
+  --mat-sys-on-surface-variant: #b7cdd2;
+  --mat-sys-outline: #6a858c;
+  --mat-sys-outline-variant: #3d555c;
+  --mat-sys-primary: #7dd3e0;
+  --mat-sys-on-primary: #00343c;
+  --mat-sys-primary-container: #0a5a66;
+  --mat-sys-on-primary-container: #c5eef4;
+  --mat-sys-secondary: #9ec6cd;
+  --mat-sys-on-secondary: #00343c;
+  --mat-sys-secondary-container: #1a4f59;
+  --mat-sys-on-secondary-container: #d0e8ec;
+  --mat-sys-tertiary: #a8c7ff;
+  --mat-sys-on-tertiary: #00315d;
+  --mat-sys-inverse-surface: #e7f3f5;
+  --mat-sys-inverse-on-surface: #03323b;
+  --mat-sys-inverse-primary: #0a5a66;
+}
+
+body {
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100%;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
