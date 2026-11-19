@@ -18,6 +18,11 @@ const routes: Routes = [
     loadChildren: () => import('./modules/settings/settings.module').then((m) => m.SettingsModule),
   },
   {
+    path: 'lists',
+    canActivate: [authGuard],
+    loadChildren: () => import('./modules/lists/lists.module').then((m) => m.ListsModule),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

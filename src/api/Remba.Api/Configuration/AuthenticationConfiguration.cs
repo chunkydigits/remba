@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Remba.Api.Auth;
 using Remba.Model.Configuration;
 
 namespace Remba.Api.Configuration;
@@ -13,6 +14,7 @@ public static class AuthenticationConfiguration
         var auth0 = configuration.GetSection(Auth0Options.SectionName).Get<Auth0Options>() ?? new Auth0Options();
         services.Configure<Auth0Options>(configuration.GetSection(Auth0Options.SectionName));
         services.AddAuthorization();
+        services.AddScoped<CurrentUserResolver>();
 
         if (!auth0.IsConfigured)
         {

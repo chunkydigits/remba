@@ -1,0 +1,43 @@
+.list-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 32rem;
+}
+
+.list-detail__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.list-detail__form mat-form-field {
+  width: 100%;
+}
+
+.list-detail__form button {
+  min-height: 2.75rem;
+}
+
+.list-detail__view-settings h2 {
+  margin: 0 0 0.75rem;
+  font: var(--mat-sys-title-large);
+}
+
+.list-detail__success {
+  margin: 0;
+  color: var(--mat-sys-primary);
+}
+
+.list-detail__error {
+  margin: 0;
+  color: var(--mat-sys-error);
+}
+
+.list-detail__danger {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 60%, transparent);
+}

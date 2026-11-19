@@ -1,4 +1,5 @@
 using Remba.Model.Configuration;
+using Remba.Service.Lists;
 using Remba.Service.Users;
 
 namespace Remba.Api.Configuration;
@@ -15,6 +16,7 @@ public static class ServiceConfiguration
     {
         services.Configure<UserCacheOptions>(configuration.GetSection(UserCacheOptions.SectionName));
         services.AddMemoryCache();
+        services.AddScoped<IListService, ListService>();
         services.AddScoped<IUserService, UserService>();
         return services;
     }

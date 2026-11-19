@@ -9,11 +9,12 @@ html {
   height: 100%;
   color-scheme: light;
 
+  // Base tokens lean teal; brand hex overrides below lock logo colours.
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: mat.$cyan-palette,
+        tertiary: mat.$green-palette,
       ),
       typography: Roboto,
       density: 0,
@@ -23,6 +24,21 @@ html {
 
 html[data-theme='light'] {
   color-scheme: light;
+
+  // Logo brand: deep teal (#03323b / #01343d) + mint accent (#17b07a)
+  --mat-sys-primary: #03323b;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-primary-container: #c5e8ee;
+  --mat-sys-on-primary-container: #03323b;
+  --mat-sys-secondary: #0a5a66;
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-secondary-container: #d0e8ec;
+  --mat-sys-on-secondary-container: #03323b;
+  --mat-sys-tertiary: #17b07a;
+  --mat-sys-on-tertiary: #ffffff;
+  --mat-sys-tertiary-container: #c8f5e4;
+  --mat-sys-on-tertiary-container: #003825;
+  --mat-sys-inverse-primary: #7dd3e0;
 }
 
 html[data-theme='dark'] {

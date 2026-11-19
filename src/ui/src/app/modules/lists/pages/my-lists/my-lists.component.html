@@ -1,0 +1,36 @@
+<app-page-template title="My lists">
+  <section class="my-lists">
+    <div class="my-lists__actions">
+      <a mat-flat-button color="primary" routerLink="/lists/new">Create list</a>
+    </div>
+
+    @if (lists$ | async; as lists) {
+      @if (lists.length === 0) {
+        <p class="my-lists__empty">You have no lists yet. Create one to get started.</p>
+      } @else {
+        <ul class="my-lists__items">
+          @for (list of lists; track list.id) {
+            <li>
+              <a class="my-lists__item" [routerLink]="['/lists', list.id]">
+                <span class="my-lists__name">{{ list.name }}</span>
+                <span class="my-lists__meta">
+                  {{ list.visibility }}
+                  @if (list.entityType) {
+                    · {{ list.entityType }}
+                  }
+                </span>
+                @if (list.description) {
+                  <span class="my-lists__description">{{ list.description }}</span>
+                }
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    } @else {
+      <div class="my-lists__loading">
+        <mat-spinner diameter="28"></mat-spinner>
+      </div>
+    }
+  </section>
+</app-page-template>

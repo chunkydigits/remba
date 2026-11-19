@@ -13,6 +13,7 @@
           </button>
 
           <mat-menu #accountMenu="matMenu">
+            <a mat-menu-item routerLink="/lists">My lists</a>
             <a mat-menu-item routerLink="/account">Account</a>
             <a mat-menu-item routerLink="/settings">Settings</a>
             <button mat-menu-item type="button" (click)="logout()">Sign out</button>

@@ -18,6 +18,7 @@
     } @else if (isAuthenticated$ | async) {
       @if (currentUser$ | async; as user) {
         <p class="home__welcome">Signed in as {{ user.displayName }} (@{{ user.username }})</p>
+        <a mat-flat-button color="primary" routerLink="/lists">My lists</a>
         <a mat-stroked-button routerLink="/account">Manage account</a>
       } @else {
         <p class="home__note">Preparing your Remba account…</p>

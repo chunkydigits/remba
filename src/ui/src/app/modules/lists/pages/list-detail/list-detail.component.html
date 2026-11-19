@@ -1,0 +1,86 @@
+<app-page-template title="List details">
+  @if (list$ | async; as list) {
+    <section class="list-detail">
+      <form class="list-detail__form" [formGroup]="form" (ngSubmit)="onSave()">
+        <mat-form-field appearance="outline">
+          <mat-label>Name</mat-label>
+          <input matInput formControlName="name" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Description</mat-label>
+          <textarea matInput rows="4" formControlName="description"></textarea>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Entity type (optional)</mat-label>
+          <input matInput formControlName="entityType" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Visibility</mat-label>
+          <mat-select formControlName="visibility">
+            <mat-option value="private">Private</mat-option>
+            <mat-option value="public">Public</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-flat-button color="primary" type="submit">Save details</button>
+      </form>
+
+      <section class="list-detail__view-settings">
+        <h2>View settings</h2>
+        <form class="list-detail__form" [formGroup]="form" (ngSubmit)="onSaveViewSettings()">
+          <mat-form-field appearance="outline">
+            <mat-label>Sort by</mat-label>
+            <mat-select formControlName="sortBy">
+              <mat-option value="manual">Manual</mat-option>
+              <mat-option value="name">Name</mat-option>
+              <mat-option value="added">Date added</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Sort direction</mat-label>
+            <mat-select formControlName="sortDirection">
+              <mat-option value="ascending">Ascending</mat-option>
+              <mat-option value="descending">Descending</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>View mode</mat-label>
+            <mat-select formControlName="viewMode">
+              <mat-option value="list">List</mat-option>
+              <mat-option value="grid">Grid</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <button mat-stroked-button type="submit">Save view settings</button>
+        </form>
+      </section>
+
+      @if (saveSuccess) {
+        <p class="list-detail__success">Saved.</p>
+      }
+      @if (saveError) {
+        <p class="list-detail__error">{{ saveError }}</p>
+      }
+
+      <div class="list-detail__danger">
+        <button mat-stroked-button color="warn" type="button" (click)="onDelete()">
+          Delete list
+        </button>
+        @if (deleteError) {
+          <p class="list-detail__error">{{ deleteError }}</p>
+        }
+      </div>
+    </section>
+  } @else {
+    <p>Loading list…</p>
+  }
+
+  @if (saveResult$ | async) {}
+  @if (viewSettingsResult$ | async) {}
+  @if (deleteResult$ | async) {}
+</app-page-template>

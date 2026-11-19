@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Azure.Cosmos;
 using Remba.Model.Configuration;
 using Remba.Repository.Cosmos;
+using Remba.Repository.Lists;
 using Remba.Repository.Users;
 
 namespace Remba.Api.Configuration;
@@ -42,13 +43,14 @@ public static class RepositoryConfiguration
 
             services.AddSingleton<CosmosDbInitializer>();
             services.AddSingleton<IUserRepository, UserRepository>();
+            services.AddSingleton<IListRepository, ListRepository>();
         }
         else
         {
             services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+            services.AddSingleton<IListRepository, InMemoryListRepository>();
         }
 
         return services;
     }
 }
-
