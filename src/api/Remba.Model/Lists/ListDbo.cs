@@ -78,6 +78,9 @@ public class ListViewSettingsDbo
 
     [JsonPropertyName("viewMode")]
     public string ViewMode { get; set; } = ListViewModes.List;
+
+    [JsonPropertyName("visibleFields")]
+    public List<string> VisibleFields { get; set; } = [];
 }
 
 public class ExternalLinkDbo

@@ -23,4 +23,6 @@ public class CosmosContainersOptions
     public string UserLists { get; set; } = "user-lists";
 
     public string Entities { get; set; } = "entities";
+
+    public string System { get; set; } = "system";
 }

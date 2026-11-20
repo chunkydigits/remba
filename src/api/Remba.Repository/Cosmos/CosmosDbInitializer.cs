@@ -43,6 +43,8 @@ public class CosmosDbInitializer
             .ConfigureAwait(false);
         await EnsureContainerAsync(database, _options.Containers.Entities, "/id", cancellationToken)
             .ConfigureAwait(false);
+        await EnsureContainerAsync(database, _options.Containers.System, "/id", cancellationToken)
+            .ConfigureAwait(false);
 
         _logger.LogInformation("Cosmos database and containers are ready.");
     }

@@ -28,6 +28,8 @@ public class ListViewSettingsDto
     public string SortDirection { get; set; } = ListSortDirections.Ascending;
 
     public string ViewMode { get; set; } = ListViewModes.List;
+
+    public List<string> VisibleFields { get; set; } = [];
 }
 
 public class ListSummaryDto

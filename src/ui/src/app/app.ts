@@ -1,9 +1,10 @@
 import { Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
-  standalone: false,
+  imports: [RouterOutlet],
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })

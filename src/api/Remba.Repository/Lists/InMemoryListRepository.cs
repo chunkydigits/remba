@@ -103,7 +103,8 @@ public class InMemoryListRepository : IListRepository
             {
                 SortBy = source.ViewSettings.SortBy,
                 SortDirection = source.ViewSettings.SortDirection,
-                ViewMode = source.ViewSettings.ViewMode
+                ViewMode = source.ViewSettings.ViewMode,
+                VisibleFields = [.. source.ViewSettings.VisibleFields]
             },
             ExternalLinks = source.ExternalLinks
                 .Select(link => new ExternalLinkDbo

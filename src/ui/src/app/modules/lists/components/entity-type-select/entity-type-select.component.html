@@ -1,0 +1,40 @@
+<div class="entity-type-select">
+  @if (!addingNew) {
+    <mat-form-field appearance="outline" class="entity-type-select__field">
+      <mat-label>Entity type</mat-label>
+      <mat-select
+        [value]="selectedKey"
+        [disabled]="disabled"
+        (selectionChange)="onSelectChange($event.value)"
+        (blur)="markTouched()"
+      >
+        <mat-option value="">None</mat-option>
+        @if (types$ | async; as types) {
+          @for (type of types; track type.key) {
+            <mat-option [value]="type.key">
+              {{ type.name }}
+              @if (type.supportsLookup) {
+                <span class="entity-type-select__hint"> · search</span>
+              }
+            </mat-option>
+          }
+        }
+        <mat-option [value]="addNewValue">Add new type…</mat-option>
+      </mat-select>
+    </mat-form-field>
+  } @else {
+    <form class="entity-type-select__new" [formGroup]="newTypeForm" (ngSubmit)="onCreateType()">
+      <mat-form-field appearance="outline" class="entity-type-select__field">
+        <mat-label>New entity type</mat-label>
+        <input matInput formControlName="name" autocomplete="off" />
+      </mat-form-field>
+      <div class="entity-type-select__actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="disabled">Add</button>
+        <button mat-button type="button" (click)="onCancelAdd()" [disabled]="disabled">Cancel</button>
+      </div>
+      @if (createError) {
+        <p class="entity-type-select__error">{{ createError }}</p>
+      }
+    </form>
+  }
+</div>

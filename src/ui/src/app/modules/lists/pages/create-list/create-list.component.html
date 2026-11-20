@@ -11,10 +11,7 @@
         <textarea matInput rows="4" formControlName="description"></textarea>
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Entity type (optional)</mat-label>
-        <input matInput formControlName="entityType" placeholder="e.g. movie, book" />
-      </mat-form-field>
+      <app-entity-type-select formControlName="entityType"></app-entity-type-select>
 
       <mat-form-field appearance="outline">
         <mat-label>Visibility</mat-label>

@@ -1,0 +1,138 @@
+<app-page-template [title]="'Add to ' + ((list$ | async)?.name || 'list')">
+  @if (list$ | async; as list) {
+    <section class="add-entry">
+      <p class="add-entry__intro">Find an item or enter the details yourself.</p>
+
+      @if (supportsProviderSearch$ | async) {
+        <form class="add-entry__form" [formGroup]="providerSearchForm" (ngSubmit)="$event.preventDefault()">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ searchPlaceholder(list.entityType) }}</mat-label>
+            <input
+              matInput
+              formControlName="query"
+              autocomplete="off"
+              [disabled]="saving"
+              (input)="onProviderSearchInput()"
+            />
+          </mat-form-field>
+        </form>
+
+        @if (searching) {
+          <p class="add-entry__hint">Searching…</p>
+        }
+        @if (searchError) {
+          <p class="add-entry__error">{{ searchError }}</p>
+        }
+
+        @if (providerSearchResults$ | async; as results) {
+          @if (results.length > 0) {
+            <ul class="add-entry__results">
+              @for (result of results; track result.identifierValue) {
+                <li
+                  class="add-entry__result"
+                  [class.add-entry__result--on-list]="result.alreadyOnList"
+                >
+                  <button
+                    type="button"
+                    class="add-entry__result-main"
+                    (click)="onSelectSearchResult(result, 'done')"
+                    [disabled]="saving || result.alreadyOnList"
+                  >
+                    @if (result.imageUrl) {
+                      <img [src]="result.imageUrl" [alt]="result.name" />
+                    }
+                    <span class="add-entry__result-text">
+                      <span class="add-entry__result-name">{{ result.name }}</span>
+                      <span class="add-entry__result-meta">
+                        @if (result.year) {
+                          {{ result.year }}
+                        }
+                        @if (result.author || result.subtitle) {
+                          · {{ result.author || result.subtitle }}
+                        }
+                      </span>
+                    </span>
+                  </button>
+
+                  <div class="add-entry__result-end">
+                    @if (result.alreadyOnList) {
+                      <span class="add-entry__result-status">Already on this list</span>
+                    } @else if (isSavingResult(result)) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    } @else {
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="add-entry__result-another"
+                        (click)="onSelectSearchResult(result, 'another')"
+                        [disabled]="saving"
+                      >
+                        Add another
+                      </button>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+
+      <form class="add-entry__form" [formGroup]="form" (ngSubmit)="onAdd()">
+        <mat-form-field appearance="outline">
+          <mat-label>Title</mat-label>
+          <input matInput formControlName="name" autocomplete="off" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Link (optional)</mat-label>
+          <input matInput formControlName="link" autocomplete="off" placeholder="https://" />
+        </mat-form-field>
+
+        @if (success) {
+          <p class="add-entry__success">Added. Ready for the next one.</p>
+        }
+        @if (error) {
+          <p class="add-entry__error">{{ error }}</p>
+        }
+
+        <div class="add-entry__actions">
+          <button mat-button type="button" (click)="onCancel()" [disabled]="saving">Cancel</button>
+          <button
+            mat-stroked-button
+            type="button"
+            class="add-entry__action-button"
+            [class.add-entry__action-button--busy]="isSavingPlain('another')"
+            (click)="onAddAnother()"
+            [disabled]="saving"
+            [attr.aria-label]="isSavingPlain('another') ? 'Saving' : 'Add another'"
+          >
+            @if (isSavingPlain('another')) {
+              <mat-spinner diameter="18"></mat-spinner>
+            }
+            <span class="add-entry__action-label">Add another</span>
+          </button>
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            class="add-entry__action-button"
+            [class.add-entry__action-button--busy]="isSavingPlain('done')"
+            [disabled]="saving"
+            [attr.aria-label]="isSavingPlain('done') ? 'Saving' : 'Add to list'"
+          >
+            @if (isSavingPlain('done')) {
+              <mat-spinner diameter="18"></mat-spinner>
+            }
+            <span class="add-entry__action-label">Add to list</span>
+          </button>
+        </div>
+      </form>
+    </section>
+  } @else {
+    <p>Loading list…</p>
+  }
+
+  @if (addPlainResult$ | async) {}
+  @if (addSearchResult$ | async) {}
+</app-page-template>

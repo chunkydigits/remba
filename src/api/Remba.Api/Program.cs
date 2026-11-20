@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Remba.Api.Configuration;
 using Remba.Model.Configuration;
 using Remba.Repository.Cosmos;
+using Remba.Service.System;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,15 +44,23 @@ if (!auth0.IsConfigured)
     app.Logger.LogWarning("Auth0 is not configured. Protected endpoints will reject unauthenticated requests until Domain and Audience are set.");
 }
 
-if (!cosmos.IsConfigured)
+using (var scope = app.Services.CreateScope())
 {
-    app.Logger.LogWarning("Cosmos DB is not configured. Using in-memory user storage for local development.");
-}
-else
-{
-    using var scope = app.Services.CreateScope();
-    var initializer = scope.ServiceProvider.GetRequiredService<CosmosDbInitializer>();
-    await initializer.EnsureCreatedAsync();
+    if (!cosmos.IsConfigured)
+    {
+        app.Logger.LogWarning("Cosmos DB is not configured. Using in-memory storage for local development.");
+    }
+    else
+    {
+        var initializer = scope.ServiceProvider.GetRequiredService<CosmosDbInitializer>();
+        await initializer.EnsureCreatedAsync();
+    }
+
+    var suggestedLists = scope.ServiceProvider.GetRequiredService<ISuggestedListService>();
+    await suggestedLists.EnsureDefaultsAsync();
+
+    var entityTypes = scope.ServiceProvider.GetRequiredService<IEntityTypeService>();
+    await entityTypes.EnsureDefaultsAsync();
 }
 
 if (app.Environment.IsDevelopment())

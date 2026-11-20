@@ -37,6 +37,7 @@
       </a>
 
       <div class="page-template__slot page-template__slot--end">
+        <ng-content select="[pageHeaderEnd]"></ng-content>
         @if (!authConfigured) {
           <span class="page-template__hint">Auth0 needed</span>
         } @else if (isLoading$ | async) {

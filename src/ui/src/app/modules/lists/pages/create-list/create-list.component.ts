@@ -1,13 +1,24 @@
+import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { Observable, Subject, catchError, of, switchMap, tap } from 'rxjs';
+import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
+import { MaterialModule } from '../../../../core/material.module';
+import { EntityTypeSelectComponent } from '../../components/entity-type-select/entity-type-select.component';
 import { ListService } from '../../services/list.service';
 import { ListDetail } from '../../models/list.model';
 
 @Component({
   selector: 'app-create-list',
-  standalone: false,
+  imports: [
+    AsyncPipe,
+    ReactiveFormsModule,
+    RouterLink,
+    MaterialModule,
+    PageTemplateComponent,
+    EntityTypeSelectComponent,
+  ],
   templateUrl: './create-list.component.html',
   styleUrl: './create-list.component.scss',
 })

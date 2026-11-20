@@ -1,12 +1,15 @@
+import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Observable, Subject, catchError, of, switchMap, tap } from 'rxjs';
+import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
+import { MaterialModule } from '../../../../core/material.module';
 import { User } from '../../../../core/models/user.model';
 import { UserService } from '../../../../core/services/user.service';
 
 @Component({
   selector: 'app-account',
-  standalone: false,
+  imports: [AsyncPipe, ReactiveFormsModule, MaterialModule, PageTemplateComponent],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
 })

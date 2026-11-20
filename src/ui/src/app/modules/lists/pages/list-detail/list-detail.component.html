@@ -1,86 +1,259 @@
-<app-page-template title="List details">
+<app-page-template [title]="(list$ | async)?.name || 'List details'">
+  <div pageHeaderEnd class="list-detail__header-actions">
+    <a
+      mat-icon-button
+      [routerLink]="['/lists', (listId$ | async), 'add']"
+      aria-label="Add item"
+    >
+      <mat-icon>add</mat-icon>
+    </a>
+    <button
+      mat-icon-button
+      type="button"
+      [attr.aria-expanded]="toolbarMode !== 'closed'"
+      aria-label="Toggle list tools"
+      (click)="toggleToolbar()"
+    >
+      <mat-icon>{{ toolbarMode === 'closed' ? 'expand_more' : 'expand_less' }}</mat-icon>
+    </button>
+  </div>
+
   @if (list$ | async; as list) {
-    <section class="list-detail">
-      <form class="list-detail__form" [formGroup]="form" (ngSubmit)="onSave()">
-        <mat-form-field appearance="outline">
-          <mat-label>Name</mat-label>
-          <input matInput formControlName="name" />
-        </mat-form-field>
+    @if (toolbarMode !== 'closed') {
+      <section class="list-detail__toolbar" aria-label="List tools">
+        @if (toolbarMode === 'menu') {
+          <div class="list-detail__actions">
+            <button type="button" class="list-detail__action" aria-label="Search" (click)="openMode('search')">
+              <span class="list-detail__action-icon" aria-hidden="true">
+                <mat-icon>search</mat-icon>
+              </span>
+              <span class="list-detail__action-label">Search</span>
+            </button>
+            <button type="button" class="list-detail__action" aria-label="Filter" (click)="openMode('filter')">
+              <span class="list-detail__action-icon" aria-hidden="true">
+                <mat-icon>filter_list</mat-icon>
+              </span>
+              <span class="list-detail__action-label">Filter</span>
+            </button>
+            <button type="button" class="list-detail__action" aria-label="Sort" (click)="openMode('sort')">
+              <span class="list-detail__action-icon" aria-hidden="true">
+                <mat-icon>sort</mat-icon>
+              </span>
+              <span class="list-detail__action-label">Sort</span>
+            </button>
+            <button
+              type="button"
+              class="list-detail__action"
+              aria-label="Clear search, filter and sort"
+              [disabled]="(hasActiveListTools$ | async) === false"
+              (click)="onClearListTools()"
+            >
+              <span class="list-detail__action-icon" aria-hidden="true">
+                <mat-icon>filter_alt_off</mat-icon>
+              </span>
+              <span class="list-detail__action-label">Clear</span>
+            </button>
+            <button type="button" class="list-detail__action" aria-label="Settings" (click)="openMode('settings')">
+              <span class="list-detail__action-icon" aria-hidden="true">
+                <mat-icon>settings</mat-icon>
+              </span>
+              <span class="list-detail__action-label">Settings</span>
+            </button>
+          </div>
+        } @else {
+          <div class="list-detail__panel-header">
+            <button mat-icon-button type="button" aria-label="Back to tools" (click)="backToMenu()">
+              <mat-icon>arrow_back</mat-icon>
+            </button>
+            <span class="list-detail__panel-title">
+              @switch (toolbarMode) {
+                @case ('search') {
+                  Search
+                }
+                @case ('filter') {
+                  Filter
+                }
+                @case ('sort') {
+                  Sort
+                }
+                @case ('settings') {
+                  Settings
+                }
+              }
+            </span>
+          </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Description</mat-label>
-          <textarea matInput rows="4" formControlName="description"></textarea>
-        </mat-form-field>
+          @if (toolbarMode === 'search') {
+            <form class="list-detail__panel" [formGroup]="searchPanelForm" (ngSubmit)="onSearchSubmit()">
+              <mat-form-field appearance="outline">
+                <mat-label>Search this list</mat-label>
+                <input matInput formControlName="q" autocomplete="off" />
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="submit">Search</button>
+            </form>
+          }
 
-        <mat-form-field appearance="outline">
-          <mat-label>Entity type (optional)</mat-label>
-          <input matInput formControlName="entityType" />
-        </mat-form-field>
+          @if (toolbarMode === 'filter') {
+            <form class="list-detail__panel" [formGroup]="filterPanelForm" (ngSubmit)="onFilterApply()">
+              <mat-form-field appearance="outline">
+                <mat-label>Property</mat-label>
+                <mat-select formControlName="field" (selectionChange)="onFilterFieldChange()">
+                  <mat-option value="">Any</mat-option>
+                  @for (field of filterFields$ | async; track field.key) {
+                    <mat-option [value]="field.key">{{ field.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Visibility</mat-label>
-          <mat-select formControlName="visibility">
-            <mat-option value="private">Private</mat-option>
-            <mat-option value="public">Public</mat-option>
-          </mat-select>
-        </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Value</mat-label>
+                <mat-select formControlName="value" [disabled]="!filterPanelForm.controls.field.value">
+                  <mat-option value="">Any</mat-option>
+                  @for (value of filterValues$ | async; track value) {
+                    <mat-option [value]="value">{{ value }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
 
-        <button mat-flat-button color="primary" type="submit">Save details</button>
-      </form>
+              <div class="list-detail__panel-actions">
+                <button mat-stroked-button type="button" (click)="onFilterClear()">Clear</button>
+                <button mat-flat-button color="primary" type="submit">Apply</button>
+              </div>
+            </form>
+          }
 
-      <section class="list-detail__view-settings">
-        <h2>View settings</h2>
-        <form class="list-detail__form" [formGroup]="form" (ngSubmit)="onSaveViewSettings()">
-          <mat-form-field appearance="outline">
-            <mat-label>Sort by</mat-label>
-            <mat-select formControlName="sortBy">
-              <mat-option value="manual">Manual</mat-option>
-              <mat-option value="name">Name</mat-option>
-              <mat-option value="added">Date added</mat-option>
-            </mat-select>
-          </mat-form-field>
+          @if (toolbarMode === 'sort') {
+            <form class="list-detail__panel" [formGroup]="sortPanelForm" (ngSubmit)="onSortApply()">
+              <mat-form-field appearance="outline">
+                <mat-label>Sort by</mat-label>
+                <mat-select formControlName="sortBy">
+                  @for (field of sortFields$ | async; track field.key) {
+                    <mat-option [value]="field.key">{{ field.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Sort direction</mat-label>
-            <mat-select formControlName="sortDirection">
-              <mat-option value="ascending">Ascending</mat-option>
-              <mat-option value="descending">Descending</mat-option>
-            </mat-select>
-          </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Direction</mat-label>
+                <mat-select formControlName="sortDirection">
+                  <mat-option value="ascending">Ascending</mat-option>
+                  <mat-option value="descending">Descending</mat-option>
+                </mat-select>
+              </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>View mode</mat-label>
-            <mat-select formControlName="viewMode">
-              <mat-option value="list">List</mat-option>
-              <mat-option value="grid">Grid</mat-option>
-            </mat-select>
-          </mat-form-field>
+              <button mat-flat-button color="primary" type="submit">Apply</button>
+            </form>
+          }
 
-          <button mat-stroked-button type="submit">Save view settings</button>
-        </form>
-      </section>
-
-      @if (saveSuccess) {
-        <p class="list-detail__success">Saved.</p>
-      }
-      @if (saveError) {
-        <p class="list-detail__error">{{ saveError }}</p>
-      }
-
-      <div class="list-detail__danger">
-        <button mat-stroked-button color="warn" type="button" (click)="onDelete()">
-          Delete list
-        </button>
-        @if (deleteError) {
-          <p class="list-detail__error">{{ deleteError }}</p>
+          @if (toolbarMode === 'settings') {
+            <app-list-settings
+              [list]="list"
+              [saveSuccess]="saveSuccess"
+              [saveError]="saveError"
+              [deleteError]="deleteError"
+              (saveDetails)="onSaveDetails($event)"
+              (saveViewSettings)="onSaveViewSettings($event)"
+              (deleteList)="onDeleteList()"
+            ></app-list-settings>
+          }
         }
-      </div>
+      </section>
+    }
+
+    <section class="list-detail">
+      @if (visibleFields$ | async; as visibleFields) {
+        @if (entries$ | async; as entries) {
+          @if (entries.length === 0) {
+            <p class="list-detail__empty">No items match. Use + to add one, or clear filters.</p>
+          } @else {
+            @if (isManualOrder$ | async) {
+              <p class="list-detail__hint">Drag items to change order.</p>
+            }
+
+            <ul
+              class="list-detail__entry-list"
+              cdkDropList
+              [cdkDropListDisabled]="(isManualOrder$ | async) === false"
+              (cdkDropListDropped)="onDrop($event)"
+            >
+              @for (entry of displayedEntries; track entry.id) {
+                <li class="list-detail__entry" cdkDrag [cdkDragDisabled]="(isManualOrder$ | async) === false">
+                  <span class="list-detail__drag" cdkDragHandle aria-hidden="true">⋮⋮</span>
+
+                  <div class="list-detail__entry-body">
+                    @if (showsField(visibleFields, 'name')) {
+                      @if (entry.link && showsField(visibleFields, 'link')) {
+                        <a
+                          class="list-detail__entry-name"
+                          [href]="entry.link"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {{ entry.name }}
+                        </a>
+                      } @else {
+                        <span class="list-detail__entry-name">{{ entry.name }}</span>
+                      }
+                    }
+
+                    @for (field of visibleFields; track field) {
+                      @if (field !== 'name' && field !== 'link' && field !== 'read') {
+                        @if (entryFieldValue(entry, field); as value) {
+                          @if (value) {
+                            <span class="list-detail__entry-line">{{ value }}</span>
+                          }
+                        }
+                      }
+                    }
+
+                    @if (showsField(visibleFields, 'link') && entry.link && !showsField(visibleFields, 'name')) {
+                      <a
+                        class="list-detail__entry-line"
+                        [href]="entry.link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {{ entry.link }}
+                      </a>
+                    }
+                  </div>
+
+                  @if (showsField(visibleFields, 'read') && (isBookList$ | async)) {
+                    <mat-checkbox
+                      [checked]="!!entry.read"
+                      (change)="onToggleRead(entry)"
+                      color="primary"
+                      aria-label="Mark as read"
+                    ></mat-checkbox>
+                  }
+
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    type="button"
+                    aria-label="Remove item"
+                    (click)="onDeleteEntry(entry)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+
+      @if (entryError) {
+        <p class="list-detail__error">{{ entryError }}</p>
+      }
     </section>
   } @else {
     <p>Loading list…</p>
   }
 
-  @if (saveResult$ | async) {}
-  @if (viewSettingsResult$ | async) {}
+  @if (saveDetailsResult$ | async) {}
+  @if (saveViewSettingsResult$ | async) {}
   @if (deleteResult$ | async) {}
+  @if (deleteEntryResult$ | async) {}
+  @if (toggleReadResult$ | async) {}
 </app-page-template>

@@ -85,12 +85,14 @@ public class ListServiceTests
             {
                 SortBy = "name",
                 SortDirection = "descending",
-                ViewMode = "grid"
+                ViewMode = "grid",
+                VisibleFields = ["name", "Author", "read"]
             });
 
         Assert.Equal("name", result.ViewSettings.SortBy);
         Assert.Equal(ListSortDirections.Descending, result.ViewSettings.SortDirection);
         Assert.Equal(ListViewModes.Grid, result.ViewSettings.ViewMode);
+        Assert.Equal(["name", "author", "read"], result.ViewSettings.VisibleFields);
     }
 
     [Fact]

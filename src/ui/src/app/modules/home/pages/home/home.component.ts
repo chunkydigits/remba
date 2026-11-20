@@ -1,5 +1,9 @@
+import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
+import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
+import { MaterialModule } from '../../../../core/material.module';
 import { AuthUiService } from '../../../../core/services/auth-ui.service';
 import { User } from '../../../../core/models/user.model';
 import { UserService } from '../../../../core/services/user.service';
@@ -9,7 +13,7 @@ import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-home',
-  standalone: false,
+  imports: [AsyncPipe, RouterLink, MaterialModule, PageTemplateComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })

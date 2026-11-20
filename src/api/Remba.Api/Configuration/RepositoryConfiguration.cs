@@ -3,7 +3,9 @@ using System.Text.Json.Serialization;
 using Microsoft.Azure.Cosmos;
 using Remba.Model.Configuration;
 using Remba.Repository.Cosmos;
+using Remba.Repository.Entities;
 using Remba.Repository.Lists;
+using Remba.Repository.System;
 using Remba.Repository.Users;
 
 namespace Remba.Api.Configuration;
@@ -42,13 +44,21 @@ public static class RepositoryConfiguration
             });
 
             services.AddSingleton<CosmosDbInitializer>();
-            services.AddSingleton<IUserRepository, UserRepository>();
+            services.AddSingleton<IEntityRepository, EntityRepository>();
+            services.AddSingleton<IEntityTypeRepository, EntityTypeRepository>();
+            services.AddSingleton<IEntryRepository, EntryRepository>();
             services.AddSingleton<IListRepository, ListRepository>();
+            services.AddSingleton<ISuggestedListRepository, SuggestedListRepository>();
+            services.AddSingleton<IUserRepository, UserRepository>();
         }
         else
         {
-            services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+            services.AddSingleton<IEntityRepository, InMemoryEntityRepository>();
+            services.AddSingleton<IEntityTypeRepository, InMemoryEntityTypeRepository>();
+            services.AddSingleton<IEntryRepository, InMemoryEntryRepository>();
             services.AddSingleton<IListRepository, InMemoryListRepository>();
+            services.AddSingleton<ISuggestedListRepository, InMemorySuggestedListRepository>();
+            services.AddSingleton<IUserRepository, InMemoryUserRepository>();
         }
 
         return services;

@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'https://localhost:7257',
+  apiBaseUrl: 'https://dev-api.remba.it',
   auth0: {
     domain: 'remba-it.uk.auth0.com',
     clientId: 'VgRe2f4ao5A4WaH8ckLstNHk7vrbupgS',

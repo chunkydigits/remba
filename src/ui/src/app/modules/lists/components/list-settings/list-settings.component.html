@@ -1,0 +1,67 @@
+<section class="list-settings">
+  <h2>List details</h2>
+  <form class="list-settings__form" [formGroup]="detailsForm" (ngSubmit)="onSaveDetails()">
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput rows="3" formControlName="description"></textarea>
+    </mat-form-field>
+
+    <app-entity-type-select formControlName="entityType"></app-entity-type-select>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Visibility</mat-label>
+      <mat-select formControlName="visibility">
+        <mat-option value="private">Private</mat-option>
+        <mat-option value="public">Public</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit">Save details</button>
+  </form>
+
+  <h2>Display</h2>
+  <form class="list-settings__form" [formGroup]="viewForm" (ngSubmit)="onSaveViewSettings()">
+    <mat-form-field appearance="outline">
+      <mat-label>View mode</mat-label>
+      <mat-select formControlName="viewMode">
+        <mat-option value="list">List</mat-option>
+        <mat-option value="grid">Grid</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <fieldset class="list-settings__fields">
+      <legend>Visible fields</legend>
+      @for (field of availableFields(); track field.key) {
+        <mat-checkbox
+          [checked]="isFieldVisible(field.key)"
+          [disabled]="field.key === 'name'"
+          (change)="onToggleField(field.key, $event.checked)"
+          color="primary"
+        >
+          {{ field.label }}
+        </mat-checkbox>
+      }
+    </fieldset>
+
+    <button mat-stroked-button type="submit">Save display settings</button>
+  </form>
+
+  @if (saveSuccess) {
+    <p class="list-settings__success">Saved.</p>
+  }
+  @if (saveError) {
+    <p class="list-settings__error">{{ saveError }}</p>
+  }
+
+  <div class="list-settings__danger">
+    <button mat-stroked-button color="warn" type="button" (click)="onDelete()">Delete list</button>
+    @if (deleteError) {
+      <p class="list-settings__error">{{ deleteError }}</p>
+    }
+  </div>
+</section>

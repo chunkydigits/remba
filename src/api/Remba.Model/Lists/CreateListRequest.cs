@@ -43,4 +43,6 @@ public class UpdateListViewSettingsRequest
 
     [MaxLength(20)]
     public string? ViewMode { get; set; }
+
+    public List<string>? VisibleFields { get; set; }
 }

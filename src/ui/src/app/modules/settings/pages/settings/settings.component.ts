@@ -1,11 +1,14 @@
+import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
+import { MaterialModule } from '../../../../core/material.module';
 import { ThemeMode } from '../../../../core/models/theme.model';
 import { ThemeService } from '../../../../core/services/theme.service';
 
 @Component({
   selector: 'app-settings',
-  standalone: false,
+  imports: [AsyncPipe, MaterialModule, PageTemplateComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })

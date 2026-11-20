@@ -1,19 +1,17 @@
-import { NgModule, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { authHttpInterceptorFn, provideAuth0 } from '@auth0/auth0-angular';
-import { AppRoutingModule } from './app-routing-module';
-import { App } from './app';
+import { routes } from './app.routes';
 import { environment } from '../environments/environment';
 
 const auth0Domain = environment.auth0.domain || 'configure-me.auth0.com';
 const auth0ClientId = environment.auth0.clientId || 'configure-me';
 
-@NgModule({
-  declarations: [App],
-  imports: [BrowserModule, AppRoutingModule],
+export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    provideRouter(routes),
     provideHttpClient(withInterceptors([authHttpInterceptorFn])),
     provideAuth0({
       domain: auth0Domain,
@@ -27,6 +25,4 @@ const auth0ClientId = environment.auth0.clientId || 'configure-me';
       },
     }),
   ],
-  bootstrap: [App],
-})
-export class AppModule {}
+};

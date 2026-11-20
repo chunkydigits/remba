@@ -1,0 +1,29 @@
+.entity-type-select {
+  width: 100%;
+}
+
+.entity-type-select__field {
+  width: 100%;
+}
+
+.entity-type-select__hint {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.entity-type-select__new {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.entity-type-select__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.entity-type-select__error {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+}

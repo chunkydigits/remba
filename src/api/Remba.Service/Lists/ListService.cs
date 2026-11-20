@@ -152,6 +152,15 @@ public class ListService : IListService
             list.ViewSettings.ViewMode = NormaliseViewMode(request.ViewMode);
         }
 
+        if (request.VisibleFields is not null)
+        {
+            list.ViewSettings.VisibleFields = request.VisibleFields
+                .Where(field => !string.IsNullOrWhiteSpace(field))
+                .Select(field => field.Trim().ToLowerInvariant())
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+        }
+
         list.Edited = DateTime.UtcNow;
         list.ChangedByUserId = ownerId;
 
@@ -235,7 +244,8 @@ public class ListService : IListService
             {
                 SortBy = list.ViewSettings.SortBy,
                 SortDirection = list.ViewSettings.SortDirection,
-                ViewMode = list.ViewSettings.ViewMode
+                ViewMode = list.ViewSettings.ViewMode,
+                VisibleFields = [.. list.ViewSettings.VisibleFields]
             },
             Added = list.Added,
             Edited = list.Edited

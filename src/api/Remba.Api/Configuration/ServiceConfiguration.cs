@@ -1,5 +1,7 @@
 using Remba.Model.Configuration;
+using Remba.Service.Entities;
 using Remba.Service.Lists;
+using Remba.Service.System;
 using Remba.Service.Users;
 
 namespace Remba.Api.Configuration;
@@ -15,8 +17,37 @@ public static class ServiceConfiguration
         IConfiguration configuration)
     {
         services.Configure<UserCacheOptions>(configuration.GetSection(UserCacheOptions.SectionName));
+        services.Configure<OmdbOptions>(configuration.GetSection(OmdbOptions.SectionName));
+        services.Configure<OpenLibraryOptions>(configuration.GetSection(OpenLibraryOptions.SectionName));
         services.AddMemoryCache();
+
+        var omdb = configuration.GetSection(OmdbOptions.SectionName).Get<OmdbOptions>() ?? new OmdbOptions();
+        var openLibrary = configuration.GetSection(OpenLibraryOptions.SectionName).Get<OpenLibraryOptions>()
+                          ?? new OpenLibraryOptions();
+
+        services.AddHttpClient<OmdbLookupProvider>(client =>
+        {
+            client.BaseAddress = new Uri(
+                string.IsNullOrWhiteSpace(omdb.BaseUrl) ? "https://www.omdbapi.com/" : omdb.BaseUrl);
+        });
+        services.AddHttpClient<OpenLibraryLookupProvider>(client =>
+        {
+            client.BaseAddress = new Uri(
+                string.IsNullOrWhiteSpace(openLibrary.BaseUrl)
+                    ? "https://openlibrary.org/"
+                    : openLibrary.BaseUrl);
+            // Open Library asks callers to identify themselves.
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Remba/1.0 (local-dev; books-search)");
+        });
+
+        services.AddTransient<IEntityLookupProvider>(sp => sp.GetRequiredService<OmdbLookupProvider>());
+        services.AddTransient<IEntityLookupProvider>(sp => sp.GetRequiredService<OpenLibraryLookupProvider>());
+
+        services.AddScoped<IEntityLookupService, EntityLookupService>();
+        services.AddScoped<IEntityTypeService, EntityTypeService>();
+        services.AddScoped<IEntryService, EntryService>();
         services.AddScoped<IListService, ListService>();
+        services.AddScoped<ISuggestedListService, SuggestedListService>();
         services.AddScoped<IUserService, UserService>();
         return services;
     }
