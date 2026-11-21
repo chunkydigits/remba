@@ -8,10 +8,16 @@ export interface ListEntry {
   identifierValue?: string | null;
   name: string;
   link?: string | null;
+  imageUrl?: string | null;
   author?: string | null;
   director?: string | null;
   actors?: string | null;
+  genre?: string | null;
+  themes?: string | null;
   read?: boolean | null;
+  visited?: boolean | null;
+  seen?: boolean | null;
+  seenAt?: string | null;
   order: number;
   attributes: Record<string, unknown>;
   added: string;
@@ -21,11 +27,18 @@ export interface ListEntry {
 export interface CreateEntryRequest {
   name: string;
   identifier?: EntityIdentifier;
+  entityId?: string;
   link?: string;
+  imageUrl?: string;
   author?: string;
   director?: string;
   actors?: string;
+  genre?: string;
+  themes?: string;
   read?: boolean;
+  visited?: boolean;
+  seen?: boolean;
+  seenAt?: string;
   metadata?: Record<string, string>;
   attributes?: Record<string, unknown>;
 }
@@ -33,10 +46,16 @@ export interface CreateEntryRequest {
 export interface UpdateEntryRequest {
   name?: string;
   link?: string;
+  imageUrl?: string;
   author?: string;
   director?: string;
   actors?: string;
+  genre?: string;
+  themes?: string;
   read?: boolean;
+  visited?: boolean;
+  seen?: boolean;
+  seenAt?: string | null;
   attributes?: Record<string, unknown>;
 }
 
@@ -47,7 +66,11 @@ export interface EntryListQuery {
   author?: string;
   director?: string;
   actors?: string;
+  genre?: string;
+  themes?: string;
   read?: boolean;
+  visited?: boolean;
+  seen?: boolean;
 }
 
 export interface ReorderEntriesRequest {

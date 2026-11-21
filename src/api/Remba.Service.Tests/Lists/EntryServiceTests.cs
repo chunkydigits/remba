@@ -85,6 +85,7 @@ public class EntryServiceTests
                     Name = "The Matrix",
                     Director = "Lana Wachowski, Lilly Wachowski",
                     Actors = "Keanu Reeves, Laurence Fishburne",
+                    Genre = "Action, Sci-Fi",
                     Link = "https://www.imdb.com/title/tt0133093/"
                 });
         _entityRepository
@@ -125,6 +126,7 @@ public class EntryServiceTests
 
         Assert.Equal("Lana Wachowski, Lilly Wachowski", result.Director);
         Assert.Contains("Keanu Reeves", result.Actors);
+        Assert.Equal("Action, Sci-Fi", result.Genre);
     }
 
     [Fact]
@@ -157,6 +159,108 @@ public class EntryServiceTests
 
         Assert.Equal("J.R.R. Tolkien", result.Author);
         Assert.False(result.Read);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenCountry_ThenShouldDefaultVisitedFalse()
+    {
+        _listRepository
+            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SampleList("country"));
+        _entityRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<EntityDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntityDbo entity, CancellationToken _) => entity);
+        _entryRepository
+            .Setup(repository => repository.FindActiveByEntityAsync(
+                "user1",
+                "list1",
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntryDbo?)null);
+        _entryRepository
+            .Setup(repository => repository.GetNextOrderAsync("user1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _entryRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<EntryDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntryDbo entry, CancellationToken _) => entry);
+
+        var result = await CreateService().CreateAsync(
+            "user1",
+            "list1",
+            new CreateEntryRequest { Name = "Japan" });
+
+        Assert.Equal("Japan", result.Name);
+        Assert.False(result.Visited);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenFilm_ThenShouldDefaultSeenFalse()
+    {
+        _listRepository
+            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SampleList("film"));
+        _entityRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<EntityDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntityDbo entity, CancellationToken _) => entity);
+        _entryRepository
+            .Setup(repository => repository.FindActiveByEntityAsync(
+                "user1",
+                "list1",
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntryDbo?)null);
+        _entryRepository
+            .Setup(repository => repository.GetNextOrderAsync("user1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _entryRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<EntryDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntryDbo entry, CancellationToken _) => entry);
+
+        var result = await CreateService().CreateAsync(
+            "user1",
+            "list1",
+            new CreateEntryRequest { Name = "Inception" });
+
+        Assert.Equal("Inception", result.Name);
+        Assert.False(result.Seen);
+        Assert.Null(result.SeenAt);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenMarkingSeen_ThenShouldStampSeenAt()
+    {
+        var existing = new EntryDbo
+        {
+            Id = "entry1",
+            ListId = "list1",
+            OwnerId = "user1",
+            Name = "Inception",
+            Seen = false,
+            SeenAt = null,
+            Order = 1,
+            Added = DateTime.UtcNow.AddDays(-1)
+        };
+
+        _listRepository
+            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SampleList("film"));
+        _entryRepository
+            .Setup(repository => repository.GetByIdAsync("user1", "entry1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        _entryRepository
+            .Setup(repository => repository.UpdateAsync(It.IsAny<EntryDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntryDbo entry, CancellationToken _) => entry);
+
+        var before = DateTime.UtcNow;
+        var result = await CreateService().UpdateAsync(
+            "user1",
+            "list1",
+            "entry1",
+            new UpdateEntryRequest { Seen = true });
+
+        Assert.True(result.Seen);
+        Assert.NotNull(result.SeenAt);
+        Assert.True(result.SeenAt >= before);
     }
 
     [Fact]

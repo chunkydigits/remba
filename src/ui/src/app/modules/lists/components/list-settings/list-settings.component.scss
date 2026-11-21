@@ -30,6 +30,66 @@
   gap: 0.35rem;
 }
 
+.list-settings__properties {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 70%, transparent);
+  border-radius: 0.5rem;
+}
+
+.list-settings__properties h3 {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.list-settings__hint {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.list-settings__property-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.list-settings__property {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 50%, transparent);
+}
+
+.list-settings__property-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.list-settings__property-name {
+  font: var(--mat-sys-body-medium);
+}
+
+.list-settings__property-meta {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.list-settings__property-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
 .list-settings__fields legend {
   padding: 0 0.35rem;
   font: var(--mat-sys-label-large);

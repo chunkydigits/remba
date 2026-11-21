@@ -114,6 +114,11 @@ public class ListService : IListService
             list.Visibility = NormaliseVisibility(request.Visibility);
         }
 
+        if (request.Attributes is not null)
+        {
+            list.Configuration.Attributes = NormaliseAttributes(request.Attributes);
+        }
+
         list.Edited = DateTime.UtcNow;
         list.ChangedByUserId = ownerId;
 
@@ -231,6 +236,90 @@ public class ListService : IListService
         return string.IsNullOrWhiteSpace(normalised) ? null : normalised;
     }
 
+    private static List<ListAttributeDefinitionDbo> NormaliseAttributes(
+        IEnumerable<ListAttributeDefinitionRequest> attributes)
+    {
+        var normalised = new List<ListAttributeDefinitionDbo>();
+        var usedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var attribute in attributes)
+        {
+            var name = StringUtilities.NormalizeWhitespace(attribute.Name);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("Property name is required.");
+            }
+
+            var type = NormaliseAttributeType(attribute.Type);
+            var key = StringUtilities.NormalizeWhitespace(attribute.Key);
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                key = BuildAttributeKey(name);
+            }
+            else
+            {
+                key = BuildAttributeKey(key);
+            }
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentException($"Unable to derive a key for property '{name}'.");
+            }
+
+            if (!usedKeys.Add(key))
+            {
+                throw new ArgumentException($"Duplicate property key '{key}'.");
+            }
+
+            normalised.Add(
+                new ListAttributeDefinitionDbo
+                {
+                    Key = key,
+                    Name = name,
+                    Description = NormaliseOptional(attribute.Description),
+                    Type = type,
+                    Scope = "entry"
+                });
+        }
+
+        return normalised;
+    }
+
+    private static string NormaliseAttributeType(string? type)
+    {
+        var value = (type ?? ListAttributeTypes.Text).Trim().ToLowerInvariant();
+        if (value is "truefalse" or "true-false" or "true/false")
+        {
+            value = ListAttributeTypes.Boolean;
+        }
+
+        if (value != ListAttributeTypes.Text
+            && value != ListAttributeTypes.Number
+            && value != ListAttributeTypes.Boolean
+            && value != ListAttributeTypes.Url)
+        {
+            throw new ArgumentException("Property type must be text, number, boolean, or url.");
+        }
+
+        return value;
+    }
+
+    private static string BuildAttributeKey(string value)
+    {
+        var chars = value
+            .Trim()
+            .ToLowerInvariant()
+            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '-')
+            .ToArray();
+        var key = new string(chars);
+        while (key.Contains("--", StringComparison.Ordinal))
+        {
+            key = key.Replace("--", "-", StringComparison.Ordinal);
+        }
+
+        return key.Trim('-');
+    }
+
     private static ListDto MapToDto(ListDbo list) =>
         new()
         {
@@ -240,6 +329,16 @@ public class ListService : IListService
             Name = list.Name,
             Description = list.Description,
             EntityType = list.Configuration.EntityType,
+            Attributes = list.Configuration.Attributes
+                .Select(attribute => new ListAttributeDefinitionDto
+                {
+                    Key = attribute.Key,
+                    Name = attribute.Name,
+                    Description = attribute.Description,
+                    Type = attribute.Type,
+                    Scope = attribute.Scope
+                })
+                .ToList(),
             ViewSettings = new ListViewSettingsDto
             {
                 SortBy = list.ViewSettings.SortBy,

@@ -89,11 +89,12 @@ public class InMemoryListRepository : IListRepository
             Configuration = new ListConfigurationDbo
             {
                 EntityType = source.Configuration.EntityType,
-                Attributes = source.Configuration.Attributes
+                    Attributes = source.Configuration.Attributes
                     .Select(attribute => new ListAttributeDefinitionDbo
                     {
                         Key = attribute.Key,
                         Name = attribute.Name,
+                        Description = attribute.Description,
                         Type = attribute.Type,
                         Scope = attribute.Scope
                     })

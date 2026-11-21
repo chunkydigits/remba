@@ -61,8 +61,11 @@ public class ListAttributeDefinitionDbo
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
     [JsonPropertyName("type")]
-    public string Type { get; set; } = "text";
+    public string Type { get; set; } = ListAttributeTypes.Text;
 
     [JsonPropertyName("scope")]
     public string Scope { get; set; } = "entry";

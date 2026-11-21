@@ -241,6 +241,7 @@ public class SuggestedListService : ISuggestedListService
                 {
                     Key = key,
                     Name = name,
+                    Description = StringUtilities.NormalizeWhitespace(attribute.Description),
                     Type = string.IsNullOrWhiteSpace(type) ? "text" : type.ToLowerInvariant(),
                     Scope = string.IsNullOrWhiteSpace(scope) ? "entry" : scope.ToLowerInvariant()
                 };
@@ -280,6 +281,7 @@ public class SuggestedListService : ISuggestedListService
                 {
                     Key = attribute.Key,
                     Name = attribute.Name,
+                    Description = attribute.Description,
                     Type = attribute.Type,
                     Scope = attribute.Scope
                 })

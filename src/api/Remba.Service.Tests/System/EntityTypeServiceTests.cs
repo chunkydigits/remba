@@ -34,7 +34,7 @@ public class EntityTypeServiceTests
             Times.Once);
         _repository.Verify(
             repository => repository.CreateAsync(It.IsAny<EntityTypeDbo>(), It.IsAny<CancellationToken>()),
-            Times.Exactly(4));
+            Times.Exactly(5));
     }
 
     [Fact]

@@ -27,3 +27,14 @@ public static class ListViewModes
 
     public const string Grid = "grid";
 }
+
+public static class ListAttributeTypes
+{
+    public const string Text = "text";
+
+    public const string Number = "number";
+
+    public const string Boolean = "boolean";
+
+    public const string Url = "url";
+}

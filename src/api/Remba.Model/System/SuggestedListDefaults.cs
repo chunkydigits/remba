@@ -13,7 +13,8 @@ public static class SuggestedListDefaults
         CreateFilms(utcNow),
         CreateBooks(utcNow),
         CreateRecipes(utcNow),
-        CreateTv(utcNow)
+        CreateTv(utcNow),
+        CreateCountries(utcNow)
     ];
 
     public static SuggestedListDbo CreateFilms(DateTime utcNow) =>
@@ -33,9 +34,10 @@ public static class SuggestedListDefaults
                 Attr("title", "Title"),
                 Attr("year", "Year", "number"),
                 Attr("director", "Director"),
+                Attr("genre", "Genre"),
                 Attr("rating", "Rating", "number")
             ],
-            defaultSelectedKeys: ["title", "year", "director"]);
+            defaultSelectedKeys: ["title", "year", "director", "genre"]);
 
     public static SuggestedListDbo CreateBooks(DateTime utcNow) =>
         Create(
@@ -53,10 +55,11 @@ public static class SuggestedListDefaults
             [
                 Attr("title", "Title"),
                 Attr("authors", "Authors"),
+                Attr("genre", "Genre"),
                 Attr("publishYear", "Publish year", "number"),
                 Attr("coverUrl", "Cover URL")
             ],
-            defaultSelectedKeys: ["title", "authors"]);
+            defaultSelectedKeys: ["title", "authors", "genre"]);
 
     public static SuggestedListDbo CreateRecipes(DateTime utcNow) =>
         Create(
@@ -95,9 +98,28 @@ public static class SuggestedListDefaults
                 Attr("title", "Title"),
                 Attr("year", "Year", "number"),
                 Attr("creators", "Creators"),
+                Attr("genre", "Genre"),
                 Attr("rating", "Rating", "number")
             ],
-            defaultSelectedKeys: ["title", "year"]);
+            defaultSelectedKeys: ["title", "year", "genre"]);
+
+    public static SuggestedListDbo CreateCountries(DateTime utcNow) =>
+        Create(
+            utcNow,
+            SuggestedListSeedKeys.Countries,
+            name: "Countries",
+            description: "Countries to visit, visited, or remember.",
+            sortOrder: 5,
+            entityType: "country",
+            identifierType: SuggestedListIdentifierTypes.Url,
+            identifierLabel: "URL",
+            urlTemplate: "{value}",
+            provider: "url",
+            availableAttributes:
+            [
+                Attr("title", "Name")
+            ],
+            defaultSelectedKeys: ["title"]);
 
     private static SuggestedListDbo Create(
         DateTime utcNow,

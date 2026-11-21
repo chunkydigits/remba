@@ -1,0 +1,137 @@
+<app-page-template [title]="(entry$ | async)?.name || 'Item'">
+  <a
+    pageHeaderEnd
+    mat-button
+    type="button"
+    [routerLink]="['/lists', (listId$ | async)]"
+  >
+    Back to list
+  </a>
+
+  @if (list$ | async; as list) {
+    @if (entry$ | async; as entry) {
+      <section class="entry-detail">
+        <p class="entry-detail__eyebrow">{{ list.name }}</p>
+
+        <dl class="entry-detail__meta">
+          @if (identifierLabel(entry); as identifier) {
+            <div class="entry-detail__meta-row">
+              <dt>{{ identifier.label }}</dt>
+              <dd>{{ identifier.value }}</dd>
+            </div>
+          }
+          <div class="entry-detail__meta-row">
+            <dt>Added</dt>
+            <dd>{{ formatAdded(entry.added) }}</dd>
+          </div>
+          @if (entry.seen && entry.seenAt) {
+            <div class="entry-detail__meta-row">
+              <dt>Seen</dt>
+              <dd>{{ formatAdded(entry.seenAt) }}</dd>
+            </div>
+          }
+        </dl>
+
+        <form class="entry-detail__form" [formGroup]="form" (ngSubmit)="onSave()">
+          @if (detailFields$ | async; as fields) {
+            <div class="entry-detail__properties">
+              @for (field of fields; track field.key) {
+                @if (field.key === 'name') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input matInput formControlName="name" autocomplete="off" />
+                  </mat-form-field>
+                }
+                @if (field.key === 'author') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input matInput formControlName="author" autocomplete="off" />
+                  </mat-form-field>
+                }
+                @if (field.key === 'director') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input matInput formControlName="director" autocomplete="off" />
+                  </mat-form-field>
+                }
+                @if (field.key === 'actors') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input matInput formControlName="actors" autocomplete="off" />
+                  </mat-form-field>
+                }
+                @if (field.key === 'genre') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input
+                      matInput
+                      formControlName="genre"
+                      autocomplete="off"
+                      placeholder="Fantasy, Science Fiction"
+                    />
+                  </mat-form-field>
+                }
+                @if (field.key === 'themes') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input
+                      matInput
+                      formControlName="themes"
+                      autocomplete="off"
+                      placeholder="dragons, quests"
+                    />
+                  </mat-form-field>
+                }
+                @if (field.key === 'link') {
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ field.label }}</mat-label>
+                    <input matInput formControlName="link" autocomplete="off" placeholder="https://" />
+                  </mat-form-field>
+                }
+                @if (field.key === 'read') {
+                  <mat-checkbox formControlName="read" color="primary">{{ field.label }}</mat-checkbox>
+                }
+                @if (field.key === 'visited') {
+                  <mat-checkbox formControlName="visited" color="primary">{{ field.label }}</mat-checkbox>
+                }
+                @if (field.key === 'seen') {
+                  <mat-checkbox formControlName="seen" color="primary">{{ field.label }}</mat-checkbox>
+                }
+              }
+            </div>
+          }
+
+          @if (error) {
+            <p class="entry-detail__error">{{ error }}</p>
+          }
+
+          <div class="entry-detail__actions">
+            <a mat-button [routerLink]="['/lists', list.id]">Cancel</a>
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              class="entry-detail__save"
+              [class.entry-detail__save--busy]="saving"
+              [disabled]="saving"
+            >
+              @if (saving) {
+                <mat-spinner diameter="18"></mat-spinner>
+              }
+              <span class="entry-detail__save-label">Save</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    } @else if (loaded) {
+      <p class="entry-detail__error">{{ error || 'Item was not found.' }}</p>
+      <a mat-button [routerLink]="['/lists', list.id]">Back to list</a>
+    } @else {
+      <p>Loading item…</p>
+    }
+  } @else {
+    <p>Loading list…</p>
+  }
+
+  @if (saveResult$ | async) {}
+</app-page-template>

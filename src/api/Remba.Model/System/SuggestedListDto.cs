@@ -54,13 +54,3 @@ public class SuggestedListEnrichmentAttributeDto
     public string Type { get; set; } = "text";
 }
 
-public class ListAttributeDefinitionDto
-{
-    public string Key { get; set; } = string.Empty;
-
-    public string Name { get; set; } = string.Empty;
-
-    public string Type { get; set; } = "text";
-
-    public string Scope { get; set; } = "entry";
-}

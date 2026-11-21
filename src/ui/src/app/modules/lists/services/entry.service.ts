@@ -40,11 +40,27 @@ export class EntryService {
     if (query?.actors) {
       params = params.set('actors', query.actors);
     }
+    if (query?.genre) {
+      params = params.set('genre', query.genre);
+    }
+    if (query?.themes) {
+      params = params.set('themes', query.themes);
+    }
     if (query?.read === true || query?.read === false) {
       params = params.set('read', String(query.read));
     }
+    if (query?.visited === true || query?.visited === false) {
+      params = params.set('visited', String(query.visited));
+    }
+    if (query?.seen === true || query?.seen === false) {
+      params = params.set('seen', String(query.seen));
+    }
 
     return this.http.get<ListEntry[]>(this.baseUrl(listId), { params });
+  }
+
+  get(listId: string, entryId: string): Observable<ListEntry> {
+    return this.http.get<ListEntry>(`${this.baseUrl(listId)}/${entryId}`);
   }
 
   create(listId: string, request: CreateEntryRequest): Observable<ListEntry> {

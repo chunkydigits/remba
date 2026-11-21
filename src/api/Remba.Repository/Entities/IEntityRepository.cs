@@ -11,6 +11,12 @@ public interface IEntityRepository
         string identifierValue,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<EntityDbo>> SearchAsync(
+        string entityType,
+        string query,
+        int limit = 10,
+        CancellationToken cancellationToken = default);
+
     Task<EntityDbo> CreateAsync(EntityDbo entity, CancellationToken cancellationToken = default);
 
     Task<EntityDbo> UpdateAsync(EntityDbo entity, CancellationToken cancellationToken = default);

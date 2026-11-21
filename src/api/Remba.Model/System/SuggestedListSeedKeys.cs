@@ -6,4 +6,5 @@ public static class SuggestedListSeedKeys
     public const string Books = "books";
     public const string Recipes = "recipes";
     public const string Tv = "tv";
+    public const string Countries = "countries";
 }

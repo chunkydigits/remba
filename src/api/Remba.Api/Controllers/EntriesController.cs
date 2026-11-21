@@ -37,7 +37,11 @@ public class EntriesController : ControllerBase
         [FromQuery] string? author,
         [FromQuery] string? director,
         [FromQuery] string? actors,
+        [FromQuery] string? genre,
+        [FromQuery] string? themes,
         [FromQuery] bool? read,
+        [FromQuery] bool? visited,
+        [FromQuery] bool? seen,
         CancellationToken cancellationToken)
     {
         try
@@ -59,7 +63,11 @@ public class EntriesController : ControllerBase
                     Author = author,
                     Director = director,
                     Actors = actors,
-                    Read = read
+                    Genre = genre,
+                    Themes = themes,
+                    Read = read,
+                    Visited = visited,
+                    Seen = seen
                 },
                 cancellationToken);
             return Ok(entries);

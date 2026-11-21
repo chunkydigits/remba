@@ -15,6 +15,16 @@ export interface ListViewSettings {
   visibleFields?: string[];
 }
 
+export type ListAttributeType = 'text' | 'number' | 'boolean' | 'url';
+
+export interface ListAttributeDefinition {
+  key: string;
+  name: string;
+  description?: string | null;
+  type: ListAttributeType | string;
+  scope?: string;
+}
+
 export interface ListDetail {
   id: string;
   ownerId: string;
@@ -22,6 +32,7 @@ export interface ListDetail {
   description: string;
   visibility: 'private' | 'public' | string;
   entityType?: string | null;
+  attributes?: ListAttributeDefinition[];
   viewSettings: ListViewSettings;
   added: string;
   edited: string | null;
@@ -39,7 +50,20 @@ export interface UpdateListRequest {
   description?: string;
   entityType?: string;
   visibility?: string;
+  attributes?: Array<{
+    key?: string;
+    name: string;
+    description?: string;
+    type: ListAttributeType | string;
+  }>;
 }
+
+export const LIST_ATTRIBUTE_TYPE_OPTIONS: Array<{ value: ListAttributeType; label: string }> = [
+  { value: 'text', label: 'Text' },
+  { value: 'number', label: 'Number' },
+  { value: 'boolean', label: 'True / false' },
+  { value: 'url', label: 'URL' },
+];
 
 export interface UpdateListViewSettingsRequest {
   sortBy?: string;
@@ -53,8 +77,12 @@ export type ListFieldKey =
   | 'author'
   | 'director'
   | 'actors'
+  | 'genre'
+  | 'themes'
   | 'link'
   | 'read'
+  | 'visited'
+  | 'seen'
   | 'added';
 
 export interface ListFieldOption {
@@ -67,18 +95,24 @@ export const LIST_FIELD_OPTIONS: ListFieldOption[] = [
   { key: 'author', label: 'Author' },
   { key: 'director', label: 'Director' },
   { key: 'actors', label: 'Actors' },
+  { key: 'genre', label: 'Genre' },
+  { key: 'themes', label: 'Themes' },
   { key: 'link', label: 'Link' },
   { key: 'read', label: 'Read' },
+  { key: 'visited', label: 'Visited' },
+  { key: 'seen', label: 'Seen' },
   { key: 'added', label: 'Date added' },
 ];
 
 export function defaultVisibleFields(entityType: string | null | undefined): ListFieldKey[] {
   switch ((entityType || '').trim().toLowerCase()) {
     case 'book':
-      return ['name', 'author', 'read'];
+      return ['name', 'author', 'genre', 'read'];
     case 'film':
     case 'tv':
-      return ['name', 'director', 'actors'];
+      return ['name', 'director', 'genre', 'seen'];
+    case 'country':
+      return ['name', 'visited'];
     case 'recipe':
       return ['name', 'link'];
     default:
@@ -92,11 +126,18 @@ export function availableFieldsForEntityType(entityType: string | null | undefin
 
   if (type === 'book') {
     keys.add('author');
+    keys.add('genre');
+    keys.add('themes');
     keys.add('read');
   }
   if (type === 'film' || type === 'tv') {
     keys.add('director');
     keys.add('actors');
+    keys.add('genre');
+    keys.add('seen');
+  }
+  if (type === 'country') {
+    keys.add('visited');
   }
   if (!type || type === 'recipe') {
     keys.add('link');

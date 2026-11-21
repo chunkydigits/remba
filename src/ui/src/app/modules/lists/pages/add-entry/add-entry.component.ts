@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   BehaviorSubject,
   Observable,
@@ -23,7 +23,11 @@ import { PageTemplateComponent } from '../../../../components/page-template/page
 import { ListService } from '../../services/list.service';
 import { EntryService } from '../../services/entry.service';
 import { EntityService } from '../../services/entity.service';
-import { ListDetail } from '../../models/list.model';
+import {
+  ListDetail,
+  availableFieldsForEntityType,
+  ListFieldKey,
+} from '../../models/list.model';
 import { CreateEntryRequest, ListEntry } from '../../models/entry.model';
 import { EntitySearchResult } from '../../models/entity.model';
 
@@ -33,7 +37,7 @@ type AddMode = 'done' | 'another';
 
 @Component({
   selector: 'app-add-entry',
-  imports: [CommonModule, ReactiveFormsModule, MaterialModule, PageTemplateComponent],
+  imports: [CommonModule, ReactiveFormsModule, MaterialModule, PageTemplateComponent, RouterLink],
   templateUrl: './add-entry.component.html',
   styleUrl: './add-entry.component.scss',
 })
@@ -50,6 +54,8 @@ export class AddEntryComponent {
   private readonly providerSearchQuery$ = new BehaviorSubject<string>('');
   private readonly entriesReload$ = new BehaviorSubject<void>(undefined);
   private readonly recentlyAddedKeys$ = new BehaviorSubject<ReadonlySet<string>>(new Set());
+  private readonly selectedResultKey$ = new BehaviorSubject<string | null>(null);
+  private selectedResultFallback: EntitySearchResult | null = null;
 
   error = '';
   success = false;
@@ -60,7 +66,16 @@ export class AddEntryComponent {
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(200)]],
+    author: ['', [Validators.maxLength(400)]],
+    director: ['', [Validators.maxLength(400)]],
+    actors: ['', [Validators.maxLength(800)]],
+    genre: ['', [Validators.maxLength(400)]],
+    themes: ['', [Validators.maxLength(800)]],
     link: ['', [Validators.maxLength(2000)]],
+    isbn: ['', [Validators.maxLength(32)]],
+    read: [false],
+    visited: [false],
+    seen: [false],
   });
 
   readonly providerSearchForm = this.formBuilder.nonNullable.group({
@@ -89,6 +104,14 @@ export class AddEntryComponent {
 
   readonly supportsProviderSearch$: Observable<boolean> = this.entityType$.pipe(
     map((type) => LOOKUP_ENTITY_TYPES.has(type)),
+  );
+
+  readonly manualFields$: Observable<ListFieldKey[]> = this.entityType$.pipe(
+    map((type) =>
+      availableFieldsForEntityType(type)
+        .map((field) => field.key)
+        .filter((key) => key !== 'added' && key !== 'name'),
+    ),
   );
 
   readonly existingEntries$: Observable<ListEntry[]> = combineLatest([this.listId$, this.entriesReload$]).pipe(
@@ -148,6 +171,49 @@ export class AddEntryComponent {
     shareReplay({ bufferSize: 1, refCount: true }),
   );
 
+  readonly selectedResult$: Observable<EntitySearchResult | null> = combineLatest([
+    this.providerSearchResults$,
+    this.selectedResultKey$,
+    this.existingEntries$,
+    this.recentlyAddedKeys$,
+  ]).pipe(
+    map(([results, key, existingEntries, recentlyAddedKeys]) => {
+      if (!key) {
+        return null;
+      }
+
+      const fromResults = results.find((result) => this.resultKey(result) === key);
+      if (fromResults) {
+        this.selectedResultFallback = fromResults;
+        return fromResults;
+      }
+
+      if (!this.selectedResultFallback || this.resultKey(this.selectedResultFallback) !== key) {
+        return null;
+      }
+
+      return {
+        ...this.selectedResultFallback,
+        alreadyOnList: this.isAlreadyOnList(
+          this.selectedResultFallback,
+          existingEntries,
+          recentlyAddedKeys,
+        ),
+      };
+    }),
+    shareReplay({ bufferSize: 1, refCount: true }),
+  );
+
+  readonly pageTitle$: Observable<string> = combineLatest([this.list$, this.selectedResult$]).pipe(
+    map(([list, selected]) => {
+      if (selected) {
+        return selected.name;
+      }
+
+      return `Add to ${list?.name || 'list'}`;
+    }),
+  );
+
   readonly addPlainResult$: Observable<ListEntry | null> = this.addPlainRequests.pipe(
     switchMap((mode) => {
       const listId = this.route.snapshot.paramMap.get('listId');
@@ -158,15 +224,47 @@ export class AddEntryComponent {
       }
 
       const value = this.form.getRawValue();
+      const isbn = value.isbn.trim().replace(/[-\s]/g, '');
+      const metadata: Record<string, string> = {};
+      if (value.author.trim()) {
+        metadata['author'] = value.author.trim();
+      }
+      if (value.director.trim()) {
+        metadata['director'] = value.director.trim();
+      }
+      if (value.actors.trim()) {
+        metadata['actors'] = value.actors.trim();
+      }
+      if (value.genre.trim()) {
+        metadata['genre'] = value.genre.trim();
+      }
+      if (value.themes.trim()) {
+        metadata['themes'] = value.themes.trim();
+      }
+
       return this.createEntry(
         listId,
         {
-          name: value.name,
-          link: value.link || undefined,
+          name: value.name.trim(),
+          author: value.author.trim() || undefined,
+          director: value.director.trim() || undefined,
+          actors: value.actors.trim() || undefined,
+          genre: value.genre.trim() || undefined,
+          themes: value.themes.trim() || undefined,
+          link: value.link.trim() || undefined,
+          read: value.read || undefined,
+          visited: value.visited || undefined,
+          seen: value.seen || undefined,
+          identifier: isbn ? { type: 'isbn', value: isbn } : undefined,
+          metadata: Object.keys(metadata).length ? metadata : undefined,
         },
         mode,
         this.plainSavingKey(mode),
-        { name: value.name },
+        {
+          name: value.name.trim(),
+          identifierType: isbn ? 'isbn' : undefined,
+          identifierValue: isbn || undefined,
+        },
       );
     }),
   );
@@ -198,19 +296,32 @@ export class AddEntryComponent {
       if (result.actors) {
         metadata['actors'] = result.actors;
       }
+      if (result.genre) {
+        metadata['genre'] = result.genre;
+      }
+      if (result.themes) {
+        metadata['themes'] = result.themes;
+      }
 
       return this.createEntry(
         listId,
         {
           name: result.name,
-          identifier: {
-            type: result.identifierType,
-            value: result.identifierValue,
-          },
+          entityId: result.entityId || undefined,
+          identifier:
+            result.identifierType && result.identifierValue
+              ? {
+                  type: result.identifierType,
+                  value: result.identifierValue,
+                }
+              : undefined,
           link: result.link || undefined,
+          imageUrl: result.imageUrl || undefined,
           author: result.author || undefined,
           director: result.director || undefined,
           actors: result.actors || undefined,
+          genre: result.genre || undefined,
+          themes: result.themes || undefined,
           metadata: Object.keys(metadata).length ? metadata : undefined,
         },
         mode,
@@ -242,13 +353,26 @@ export class AddEntryComponent {
     this.addPlainRequests.next('another');
   }
 
-  onSelectSearchResult(result: EntitySearchResult, mode: AddMode): void {
+  onOpenSearchResult(result: EntitySearchResult): void {
+    this.selectedResultFallback = result;
+    this.selectedResultKey$.next(this.resultKey(result));
+  }
+
+  onBackToSearch(): void {
+    this.selectedResultKey$.next(null);
+    this.selectedResultFallback = null;
+  }
+
+  onAddSearchResult(result: EntitySearchResult, event?: Event): void {
+    event?.stopPropagation();
+    event?.preventDefault();
+
     if (this.saving || result.alreadyOnList) {
       return;
     }
 
-    this.beginSaving(this.searchSavingKey(result, mode));
-    this.addSearchRequests.next({ result, mode });
+    this.beginSaving(this.searchSavingKey(result, 'another'));
+    this.addSearchRequests.next({ result, mode: 'another' });
   }
 
   isSavingPlain(mode: AddMode): boolean {
@@ -256,10 +380,7 @@ export class AddEntryComponent {
   }
 
   isSavingResult(result: EntitySearchResult): boolean {
-    return (
-      this.savingKey === this.searchSavingKey(result, 'done')
-      || this.savingKey === this.searchSavingKey(result, 'another')
-    );
+    return this.savingKey === this.searchSavingKey(result, 'another');
   }
 
   onCancel(): void {
@@ -267,6 +388,58 @@ export class AddEntryComponent {
     if (listId) {
       void this.router.navigate(['/lists', listId]);
     }
+  }
+
+  identifierLabel(result: EntitySearchResult): { label: string; value: string } | null {
+    const type = (result.identifierType || '').trim().toLowerCase();
+    const value = (result.identifierValue || '').trim();
+    if (!value) {
+      return null;
+    }
+
+    switch (type) {
+      case 'isbn':
+        return { label: 'ISBN', value };
+      case 'imdbid':
+        return { label: 'IMDb', value };
+      case 'openlibrarywork':
+        return { label: 'Open Library', value };
+      default:
+        return type ? { label: type, value } : { label: 'Identifier', value };
+    }
+  }
+
+  detailRows(result: EntitySearchResult): { label: string; value: string }[] {
+    const rows: { label: string; value: string }[] = [];
+    if (result.year) {
+      rows.push({ label: 'Year', value: result.year });
+    }
+    if (result.author) {
+      rows.push({ label: 'Author', value: result.author });
+    }
+    if (result.director) {
+      rows.push({ label: 'Director', value: result.director });
+    }
+    if (result.actors) {
+      rows.push({ label: 'Actors', value: result.actors });
+    }
+    if (result.genre) {
+      rows.push({ label: 'Genre', value: result.genre });
+    }
+    if (result.themes) {
+      rows.push({ label: 'Themes', value: result.themes });
+    }
+    if (result.subtitle && result.subtitle !== result.author && result.subtitle !== result.director) {
+      rows.push({ label: 'Subtitle', value: result.subtitle });
+    }
+    if (result.provider === 'remba') {
+      rows.push({ label: 'Source', value: 'Your catalog' });
+    }
+    if (result.link) {
+      rows.push({ label: 'Link', value: result.link });
+    }
+
+    return rows;
   }
 
   searchPlaceholder(entityType: string | null | undefined): string {
@@ -279,6 +452,14 @@ export class AddEntryComponent {
       default:
         return 'Search';
     }
+  }
+
+  showsManualField(fields: ListFieldKey[] | null, key: ListFieldKey): boolean {
+    return !!fields?.includes(key);
+  }
+
+  showsIsbnField(entityType: string | null | undefined): boolean {
+    return (entityType || '').trim().toLowerCase() === 'book';
   }
 
   private createEntry(
@@ -300,7 +481,19 @@ export class AddEntryComponent {
       tap(() => {
         this.markRecentlyAdded(addedItem);
         this.success = true;
-        this.form.reset({ name: '', link: '' });
+        this.form.reset({
+          name: '',
+          author: '',
+          director: '',
+          actors: '',
+          genre: '',
+          themes: '',
+          link: '',
+          isbn: '',
+          read: false,
+          visited: false,
+          seen: false,
+        });
         this.entriesReload$.next();
 
         if (mode === 'done') {
@@ -352,7 +545,15 @@ export class AddEntryComponent {
   }
 
   private searchSavingKey(result: EntitySearchResult, mode: AddMode): string {
-    return `search:${result.identifierType}:${result.identifierValue}:${mode}`;
+    return `search:${this.resultKey(result)}:${mode}`;
+  }
+
+  private resultKey(result: EntitySearchResult): string {
+    if (result.entityId) {
+      return `entity:${result.entityId}`;
+    }
+
+    return `${(result.identifierType || '').toLowerCase()}:${(result.identifierValue || '').toLowerCase()}`;
   }
 
   private clearProviderSearch(): void {
@@ -377,6 +578,10 @@ export class AddEntryComponent {
     }
 
     return entries.some((entry) => {
+      if (result.entityId && entry.entityId === result.entityId) {
+        return true;
+      }
+
       if (resultIdentifier) {
         const entryIdentifier = this.normaliseIdentifier(entry.identifierType, entry.identifierValue);
         if (entryIdentifier && entryIdentifier === resultIdentifier) {

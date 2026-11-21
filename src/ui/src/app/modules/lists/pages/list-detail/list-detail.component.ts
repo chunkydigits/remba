@@ -64,6 +64,8 @@ export class ListDetailComponent {
   private readonly deleteRequests = new Subject<void>();
   private readonly deleteEntryRequests = new Subject<string>();
   private readonly toggleReadRequests = new Subject<ListEntry>();
+  private readonly toggleVisitedRequests = new Subject<ListEntry>();
+  private readonly toggleSeenRequests = new Subject<ListEntry>();
   private readonly entriesReload$ = new BehaviorSubject<void>(undefined);
   private readonly listFilter$ = new BehaviorSubject<EntryListQuery>({
     sortBy: 'order',
@@ -124,12 +126,22 @@ export class ListDetailComponent {
 
   readonly isBookList$: Observable<boolean> = this.entityType$.pipe(map((type) => type === 'book'));
 
+  readonly isCountryList$: Observable<boolean> = this.entityType$.pipe(map((type) => type === 'country'));
+
+  readonly isWatchableList$: Observable<boolean> = this.entityType$.pipe(
+    map((type) => type === 'film' || type === 'tv'),
+  );
+
   readonly isManualOrder$: Observable<boolean> = this.listFilter$.pipe(
     map((filter) => (filter.sortBy || 'order') === 'order'),
   );
 
   readonly hasActiveListTools$: Observable<boolean> = this.listFilter$.pipe(
     map((filter) => this.hasActiveListTools(filter)),
+  );
+
+  readonly viewMode$: Observable<string> = this.list$.pipe(
+    map((list) => (list?.viewSettings.viewMode || 'list').trim().toLowerCase()),
   );
 
   readonly visibleFields$: Observable<ListFieldKey[]> = this.list$.pipe(
@@ -307,6 +319,44 @@ export class ListDetailComponent {
     }),
   );
 
+  readonly toggleVisitedResult$: Observable<ListEntry | null> = this.toggleVisitedRequests.pipe(
+    switchMap((entry) => {
+      const listId = this.route.snapshot.paramMap.get('listId');
+      if (!listId) {
+        return of(null);
+      }
+
+      return this.entryService.update(listId, entry.id, { visited: !entry.visited }).pipe(
+        tap(() => {
+          this.entriesReload$.next();
+        }),
+        catchError((error) => {
+          this.entryError = error?.error?.message || 'Unable to update visited status.';
+          return of(null);
+        }),
+      );
+    }),
+  );
+
+  readonly toggleSeenResult$: Observable<ListEntry | null> = this.toggleSeenRequests.pipe(
+    switchMap((entry) => {
+      const listId = this.route.snapshot.paramMap.get('listId');
+      if (!listId) {
+        return of(null);
+      }
+
+      return this.entryService.update(listId, entry.id, { seen: !entry.seen }).pipe(
+        tap(() => {
+          this.entriesReload$.next();
+        }),
+        catchError((error) => {
+          this.entryError = error?.error?.message || 'Unable to update seen status.';
+          return of(null);
+        }),
+      );
+    }),
+  );
+
   toggleToolbar(): void {
     this.toolbarMode = this.toolbarMode === 'closed' ? 'menu' : 'closed';
   }
@@ -377,8 +427,25 @@ export class ListDetailComponent {
       });
   }
 
+  onToggleVisited(entry: ListEntry): void {
+    this.toggleVisitedRequests.next(entry);
+  }
+
+  onToggleSeen(entry: ListEntry): void {
+    this.toggleSeenRequests.next(entry);
+  }
+
   onToggleRead(entry: ListEntry): void {
     this.toggleReadRequests.next(entry);
+  }
+
+  formatSeenAt(value: string | null | undefined): string {
+    if (!value) {
+      return '';
+    }
+
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
   }
 
   onDrop(event: CdkDragDrop<ListEntry[]>): void {
@@ -408,6 +475,19 @@ export class ListDetailComponent {
     return !!fields?.includes(key);
   }
 
+  titleInitials(name: string | null | undefined): string {
+    const parts = (name || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2);
+    if (parts.length === 0) {
+      return '?';
+    }
+
+    return parts.map((part) => part[0]?.toUpperCase() || '').join('');
+  }
+
   entryFieldValue(entry: ListEntry, key: ListFieldKey): string {
     switch (key) {
       case 'name':
@@ -418,10 +498,21 @@ export class ListDetailComponent {
         return entry.director || '';
       case 'actors':
         return entry.actors || '';
+      case 'genre':
+        return entry.genre || '';
+      case 'themes':
+        return entry.themes || '';
       case 'link':
         return entry.link || '';
       case 'read':
         return entry.read ? 'Read' : 'Unread';
+      case 'visited':
+        return entry.visited ? 'Visited' : 'Not visited';
+      case 'seen':
+        if (!entry.seen) {
+          return 'Unseen';
+        }
+        return entry.seenAt ? `Seen · ${this.formatSeenAt(entry.seenAt)}` : 'Seen';
       case 'added':
         return entry.added ? new Date(entry.added).toLocaleDateString() : '';
       default:
@@ -449,8 +540,16 @@ export class ListDetailComponent {
         query.director = value;
       } else if (field === 'actors') {
         query.actors = value;
+      } else if (field === 'genre') {
+        query.genre = value;
+      } else if (field === 'themes') {
+        query.themes = value;
       } else if (field === 'read') {
         query.read = value.toLowerCase() === 'read';
+      } else if (field === 'visited') {
+        query.visited = value.toLowerCase() === 'visited';
+      } else if (field === 'seen') {
+        query.seen = value.toLowerCase() === 'seen';
       } else if (field === 'name' || field === 'link') {
         query.q = value;
       }
@@ -469,8 +568,14 @@ export class ListDetailComponent {
       !!filter.author?.trim() ||
       !!filter.director?.trim() ||
       !!filter.actors?.trim() ||
+      !!filter.genre?.trim() ||
+      !!filter.themes?.trim() ||
       filter.read === true ||
       filter.read === false ||
+      filter.visited === true ||
+      filter.visited === false ||
+      filter.seen === true ||
+      filter.seen === false ||
       nonDefaultSort
     );
   }
@@ -485,6 +590,14 @@ export class ListDetailComponent {
       return ['Read', 'Unread'];
     }
 
+    if (key === 'visited') {
+      return ['Visited', 'Not visited'];
+    }
+
+    if (key === 'seen') {
+      return ['Seen', 'Unseen'];
+    }
+
     const values = new Set<string>();
     for (const entry of entries) {
       const raw = this.entryFieldValue(entry, key).trim();
@@ -492,7 +605,7 @@ export class ListDetailComponent {
         continue;
       }
 
-      if (key === 'actors' || key === 'director' || key === 'author') {
+      if (key === 'actors' || key === 'director' || key === 'author' || key === 'genre' || key === 'themes') {
         for (const part of raw.split(',')) {
           const trimmed = part.trim();
           if (trimmed) {

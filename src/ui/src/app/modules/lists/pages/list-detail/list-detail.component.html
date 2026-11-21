@@ -165,6 +165,38 @@
         @if (entries$ | async; as entries) {
           @if (entries.length === 0) {
             <p class="list-detail__empty">No items match. Use + to add one, or clear filters.</p>
+          } @else if ((viewMode$ | async) === 'grid') {
+            <div class="list-detail__entry-grid">
+              @for (entry of displayedEntries; track entry.id) {
+                <a
+                  class="list-detail__grid-card"
+                  [routerLink]="['/lists', list.id, 'entries', entry.id]"
+                >
+                  <div class="list-detail__grid-media" aria-hidden="true">
+                    @if (entry.imageUrl) {
+                      <img [src]="entry.imageUrl" [alt]="" />
+                    } @else {
+                      <span class="list-detail__grid-initials">{{ titleInitials(entry.name) }}</span>
+                    }
+                  </div>
+                  <div class="list-detail__grid-body">
+                    <span class="list-detail__entry-name">{{ entry.name }}</span>
+                    @for (field of visibleFields; track field) {
+                      @if (field !== 'name' && field !== 'link' && field !== 'read' && field !== 'visited' && field !== 'seen') {
+                        @if (entryFieldValue(entry, field); as value) {
+                          @if (value) {
+                            <span class="list-detail__entry-line">{{ value }}</span>
+                          }
+                        }
+                      }
+                    }
+                    @if (entry.seen && entry.seenAt) {
+                      <span class="list-detail__entry-line">Seen {{ formatSeenAt(entry.seenAt) }}</span>
+                    }
+                  </div>
+                </a>
+              }
+            </div>
           } @else {
             @if (isManualOrder$ | async) {
               <p class="list-detail__hint">Drag items to change order.</p>
@@ -180,50 +212,69 @@
                 <li class="list-detail__entry" cdkDrag [cdkDragDisabled]="(isManualOrder$ | async) === false">
                   <span class="list-detail__drag" cdkDragHandle aria-hidden="true">⋮⋮</span>
 
-                  <div class="list-detail__entry-body">
-                    @if (showsField(visibleFields, 'name')) {
-                      @if (entry.link && showsField(visibleFields, 'link')) {
-                        <a
-                          class="list-detail__entry-name"
-                          [href]="entry.link"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {{ entry.name }}
-                        </a>
+                  <a
+                    class="list-detail__entry-body"
+                    [routerLink]="['/lists', list.id, 'entries', entry.id]"
+                  >
+                    <span class="list-detail__entry-thumb" aria-hidden="true">
+                      @if (entry.imageUrl) {
+                        <img [src]="entry.imageUrl" [alt]="" />
                       } @else {
+                        <span class="list-detail__grid-initials">{{ titleInitials(entry.name) }}</span>
+                      }
+                    </span>
+                    <span class="list-detail__entry-copy">
+                      @if (showsField(visibleFields, 'name')) {
                         <span class="list-detail__entry-name">{{ entry.name }}</span>
                       }
-                    }
 
-                    @for (field of visibleFields; track field) {
-                      @if (field !== 'name' && field !== 'link' && field !== 'read') {
-                        @if (entryFieldValue(entry, field); as value) {
-                          @if (value) {
-                            <span class="list-detail__entry-line">{{ value }}</span>
+                      @for (field of visibleFields; track field) {
+                        @if (field !== 'name' && field !== 'link' && field !== 'read' && field !== 'visited' && field !== 'seen') {
+                          @if (entryFieldValue(entry, field); as value) {
+                            @if (value) {
+                              <span class="list-detail__entry-line">{{ value }}</span>
+                            }
                           }
                         }
                       }
-                    }
 
-                    @if (showsField(visibleFields, 'link') && entry.link && !showsField(visibleFields, 'name')) {
-                      <a
-                        class="list-detail__entry-line"
-                        [href]="entry.link"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {{ entry.link }}
-                      </a>
-                    }
-                  </div>
+                      @if (showsField(visibleFields, 'link') && entry.link) {
+                        <span class="list-detail__entry-line">{{ entry.link }}</span>
+                      }
+
+                      @if (entry.seen && entry.seenAt) {
+                        <span class="list-detail__entry-line">Seen {{ formatSeenAt(entry.seenAt) }}</span>
+                      }
+                    </span>
+                  </a>
 
                   @if (showsField(visibleFields, 'read') && (isBookList$ | async)) {
                     <mat-checkbox
                       [checked]="!!entry.read"
                       (change)="onToggleRead(entry)"
+                      (click)="$event.stopPropagation()"
                       color="primary"
                       aria-label="Mark as read"
+                    ></mat-checkbox>
+                  }
+
+                  @if (showsField(visibleFields, 'visited') && (isCountryList$ | async)) {
+                    <mat-checkbox
+                      [checked]="!!entry.visited"
+                      (change)="onToggleVisited(entry)"
+                      (click)="$event.stopPropagation()"
+                      color="primary"
+                      aria-label="Mark as visited"
+                    ></mat-checkbox>
+                  }
+
+                  @if (isWatchableList$ | async) {
+                    <mat-checkbox
+                      [checked]="!!entry.seen"
+                      (change)="onToggleSeen(entry)"
+                      (click)="$event.stopPropagation()"
+                      color="primary"
+                      aria-label="Mark as seen"
                     ></mat-checkbox>
                   }
 
@@ -256,4 +307,6 @@
   @if (deleteResult$ | async) {}
   @if (deleteEntryResult$ | async) {}
   @if (toggleReadResult$ | async) {}
+  @if (toggleVisitedResult$ | async) {}
+  @if (toggleSeenResult$ | async) {}
 </app-page-template>

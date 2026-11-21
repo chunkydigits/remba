@@ -82,10 +82,15 @@ public class EntryService : IEntryService
             .ConfigureAwait(false);
 
         var isBook = string.Equals(list.Configuration.EntityType, EntityTypes.Book, StringComparison.OrdinalIgnoreCase);
+        var isCountry = string.Equals(list.Configuration.EntityType, EntityTypes.Country, StringComparison.OrdinalIgnoreCase);
+        var isWatchable = IsWatchableEntityType(list.Configuration.EntityType);
         var identifierType = StringUtilities.NormalizeWhitespace(request.Identifier?.Type)
             ?? entity.Identifiers.FirstOrDefault()?.Type;
         var identifierValue = StringUtilities.NormalizeWhitespace(request.Identifier?.Value)
             ?? entity.Identifiers.FirstOrDefault()?.Value;
+
+        var seen = isWatchable ? request.Seen ?? false : request.Seen;
+        var seenAt = ResolveSeenAt(seen, request.SeenAt, existingSeenAt: null, now);
 
         var entry = await _entryRepository
             .CreateAsync(
@@ -100,10 +105,18 @@ public class EntryService : IEntryService
                     IdentifierValue = NormaliseOptional(identifierValue),
                     Name = entity.Name,
                     Link = entity.Link ?? NormaliseOptional(request.Link),
+                    ImageUrl = enrichment.ImageUrl
+                        ?? NormaliseOptional(request.ImageUrl)
+                        ?? GetMetadata(entity.Metadata, "imageUrl"),
                     Author = enrichment.Author,
                     Director = enrichment.Director,
                     Actors = enrichment.Actors,
+                    Genre = enrichment.Genre,
+                    Themes = enrichment.Themes,
                     Read = isBook ? request.Read ?? false : request.Read,
+                    Visited = isCountry ? request.Visited ?? false : request.Visited,
+                    Seen = seen,
+                    SeenAt = seenAt,
                     Order = order,
                     Attributes = CloneAttributes(request.Attributes),
                     Added = now,
@@ -146,6 +159,8 @@ public class EntryService : IEntryService
                     || Contains(entry.Author, q)
                     || Contains(entry.Director, q)
                     || Contains(entry.Actors, q)
+                    || Contains(entry.Genre, q)
+                    || Contains(entry.Themes, q)
                     || Contains(entry.Link, q));
             }
 
@@ -164,9 +179,29 @@ public class EntryService : IEntryService
                 filtered = filtered.Where(entry => Contains(entry.Actors, query.Actors));
             }
 
+            if (!string.IsNullOrWhiteSpace(query.Genre))
+            {
+                filtered = filtered.Where(entry => Contains(entry.Genre, query.Genre));
+            }
+
+            if (!string.IsNullOrWhiteSpace(query.Themes))
+            {
+                filtered = filtered.Where(entry => Contains(entry.Themes, query.Themes));
+            }
+
             if (query.Read is not null)
             {
                 filtered = filtered.Where(entry => entry.Read == query.Read);
+            }
+
+            if (query.Visited is not null)
+            {
+                filtered = filtered.Where(entry => entry.Visited == query.Visited);
+            }
+
+            if (query.Seen is not null)
+            {
+                filtered = filtered.Where(entry => entry.Seen == query.Seen);
             }
 
             filtered = ApplySort(filtered, query.SortBy, query.SortDirection);
@@ -225,20 +260,16 @@ public class EntryService : IEntryService
             }
 
             entry.Name = name;
-
-            var entity = await _entityRepository.GetByIdAsync(entry.EntityId, cancellationToken).ConfigureAwait(false);
-            if (entity is not null)
-            {
-                entity.Name = name;
-                entity.Edited = DateTime.UtcNow;
-                entity.ChangedByUserId = ownerId;
-                await _entityRepository.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
-            }
         }
 
         if (request.Link is not null)
         {
             entry.Link = NormaliseOptional(request.Link);
+        }
+
+        if (request.ImageUrl is not null)
+        {
+            entry.ImageUrl = NormaliseOptional(request.ImageUrl);
         }
 
         if (request.Author is not null)
@@ -256,9 +287,31 @@ public class EntryService : IEntryService
             entry.Actors = NormaliseOptional(request.Actors);
         }
 
+        if (request.Genre is not null)
+        {
+            entry.Genre = NormaliseOptional(request.Genre);
+        }
+
+        if (request.Themes is not null)
+        {
+            entry.Themes = NormaliseOptional(request.Themes);
+        }
+
         if (request.Read is not null)
         {
             entry.Read = request.Read;
+        }
+
+        if (request.Visited is not null)
+        {
+            entry.Visited = request.Visited;
+        }
+
+        if (request.Seen is not null || request.SeenAt is not null)
+        {
+            var seen = request.Seen ?? entry.Seen;
+            entry.Seen = seen;
+            entry.SeenAt = ResolveSeenAt(seen, request.SeenAt, entry.SeenAt, DateTime.UtcNow);
         }
 
         if (request.Attributes is not null)
@@ -268,8 +321,88 @@ public class EntryService : IEntryService
 
         entry.Edited = DateTime.UtcNow;
 
+        await SyncEntityCatalogAsync(ownerId, entry, request, cancellationToken).ConfigureAwait(false);
+
         var updated = await _entryRepository.UpdateAsync(entry, cancellationToken).ConfigureAwait(false);
         return MapToDto(updated);
+    }
+
+    private async Task SyncEntityCatalogAsync(
+        string ownerId,
+        EntryDbo entry,
+        UpdateEntryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var shouldSync = request.Name is not null
+            || request.Link is not null
+            || request.ImageUrl is not null
+            || request.Author is not null
+            || request.Director is not null
+            || request.Actors is not null
+            || request.Genre is not null
+            || request.Themes is not null;
+
+        if (!shouldSync || string.IsNullOrWhiteSpace(entry.EntityId))
+        {
+            return;
+        }
+
+        var entity = await _entityRepository.GetByIdAsync(entry.EntityId, cancellationToken).ConfigureAwait(false);
+        if (entity is null)
+        {
+            return;
+        }
+
+        var changed = false;
+        if (request.Name is not null && !string.Equals(entity.Name, entry.Name, StringComparison.Ordinal))
+        {
+            entity.Name = entry.Name;
+            changed = true;
+        }
+
+        if (request.Link is not null)
+        {
+            entity.Link = entry.Link;
+            changed = true;
+        }
+
+        changed |= SetEntityMetadata(entity, "imageUrl", entry.ImageUrl);
+        changed |= SetEntityMetadata(entity, "author", entry.Author);
+        changed |= SetEntityMetadata(entity, "director", entry.Director);
+        changed |= SetEntityMetadata(entity, "actors", entry.Actors);
+        changed |= SetEntityMetadata(entity, "genre", entry.Genre);
+        changed |= SetEntityMetadata(entity, "themes", entry.Themes);
+
+        if (!changed)
+        {
+            return;
+        }
+
+        entity.Edited = DateTime.UtcNow;
+        entity.ChangedByUserId = ownerId;
+        await _entityRepository.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool SetEntityMetadata(EntityDbo entity, string key, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            if (!entity.Metadata.Remove(key))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        if (entity.Metadata.TryGetValue(key, out var existing)
+            && string.Equals(existing, value, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        entity.Metadata[key] = value;
+        return true;
     }
 
     public async Task ReorderAsync(
@@ -349,8 +482,11 @@ public class EntryService : IEntryService
             Author = NormaliseOptional(request.Author) ?? NormaliseOptional(GetMetadata(request.Metadata, "author")),
             Director = NormaliseOptional(request.Director) ?? NormaliseOptional(GetMetadata(request.Metadata, "director")),
             Actors = NormaliseOptional(request.Actors) ?? NormaliseOptional(GetMetadata(request.Metadata, "actors")),
+            Genre = NormaliseOptional(request.Genre) ?? NormaliseOptional(GetMetadata(request.Metadata, "genre")),
+            Themes = NormaliseOptional(request.Themes) ?? NormaliseOptional(GetMetadata(request.Metadata, "themes")),
             Year = NormaliseOptional(GetMetadata(request.Metadata, "year")),
-            ImageUrl = NormaliseOptional(GetMetadata(request.Metadata, "imageUrl")),
+            ImageUrl = NormaliseOptional(request.ImageUrl)
+                ?? NormaliseOptional(GetMetadata(request.Metadata, "imageUrl")),
             Link = NormaliseOptional(request.Link)
         };
 
@@ -379,6 +515,8 @@ public class EntryService : IEntryService
         enrichment.Author ??= NormaliseOptional(detail.Author);
         enrichment.Director ??= NormaliseOptional(detail.Director);
         enrichment.Actors ??= NormaliseOptional(detail.Actors);
+        enrichment.Genre ??= NormaliseOptional(detail.Genre);
+        enrichment.Themes ??= NormaliseOptional(detail.Themes);
         enrichment.Year ??= NormaliseOptional(detail.Year);
         enrichment.ImageUrl ??= NormaliseOptional(detail.ImageUrl);
         enrichment.Link ??= NormaliseOptional(detail.Link);
@@ -405,6 +543,16 @@ public class EntryService : IEntryService
         var identifierValue = StringUtilities.NormalizeWhitespace(request.Identifier?.Value);
         var metadata = CloneMetadata(request.Metadata);
         ApplyEnrichmentMetadata(metadata, enrichment);
+
+        var requestedEntityId = StringUtilities.NormalizeWhitespace(request.EntityId);
+        if (!string.IsNullOrWhiteSpace(requestedEntityId))
+        {
+            var byId = await _entityRepository.GetByIdAsync(requestedEntityId, cancellationToken).ConfigureAwait(false);
+            if (byId is not null)
+            {
+                return byId;
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(identifierType) && !string.IsNullOrWhiteSpace(identifierValue))
         {
@@ -520,12 +668,27 @@ public class EntryService : IEntryService
             EntrySortFields.Actors => descending
                 ? entries.OrderByDescending(entry => entry.Actors ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 : entries.OrderBy(entry => entry.Actors ?? string.Empty, StringComparer.OrdinalIgnoreCase),
+            EntrySortFields.Genre => descending
+                ? entries.OrderByDescending(entry => entry.Genre ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                : entries.OrderBy(entry => entry.Genre ?? string.Empty, StringComparer.OrdinalIgnoreCase),
+            EntrySortFields.Themes => descending
+                ? entries.OrderByDescending(entry => entry.Themes ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                : entries.OrderBy(entry => entry.Themes ?? string.Empty, StringComparer.OrdinalIgnoreCase),
             EntrySortFields.Added => descending
                 ? entries.OrderByDescending(entry => entry.Added)
                 : entries.OrderBy(entry => entry.Added),
             EntrySortFields.Read => descending
                 ? entries.OrderByDescending(entry => entry.Read ?? false)
                 : entries.OrderBy(entry => entry.Read ?? false),
+            EntrySortFields.Visited => descending
+                ? entries.OrderByDescending(entry => entry.Visited ?? false)
+                : entries.OrderBy(entry => entry.Visited ?? false),
+            EntrySortFields.Seen => descending
+                ? entries.OrderByDescending(entry => entry.Seen ?? false)
+                : entries.OrderBy(entry => entry.Seen ?? false),
+            EntrySortFields.SeenAt => descending
+                ? entries.OrderByDescending(entry => entry.SeenAt ?? DateTime.MinValue)
+                : entries.OrderBy(entry => entry.SeenAt ?? DateTime.MinValue),
             _ => descending
                 ? entries.OrderByDescending(entry => entry.Order)
                 : entries.OrderBy(entry => entry.Order)
@@ -585,6 +748,8 @@ public class EntryService : IEntryService
         SetMetadata(metadata, "author", enrichment.Author);
         SetMetadata(metadata, "director", enrichment.Director);
         SetMetadata(metadata, "actors", enrichment.Actors);
+        SetMetadata(metadata, "genre", enrichment.Genre);
+        SetMetadata(metadata, "themes", enrichment.Themes);
         SetMetadata(metadata, "year", enrichment.Year);
         SetMetadata(metadata, "imageUrl", enrichment.ImageUrl);
     }
@@ -627,21 +792,40 @@ public class EntryService : IEntryService
     private async Task<EntryDto> MapToDtoAsync(EntryDbo entry, CancellationToken cancellationToken)
     {
         var dto = MapToDto(entry);
-        if (!string.IsNullOrWhiteSpace(dto.IdentifierValue) || string.IsNullOrWhiteSpace(entry.EntityId))
+        if (string.IsNullOrWhiteSpace(entry.EntityId))
+        {
+            return dto;
+        }
+
+        var needsIdentifier = string.IsNullOrWhiteSpace(dto.IdentifierValue);
+        var needsImage = string.IsNullOrWhiteSpace(dto.ImageUrl);
+        if (!needsIdentifier && !needsImage)
         {
             return dto;
         }
 
         var entity = await _entityRepository.GetByIdAsync(entry.EntityId, cancellationToken).ConfigureAwait(false);
-        var identifier = entity?.Identifiers.FirstOrDefault(item =>
-            !string.IsNullOrWhiteSpace(item.Type) && !string.IsNullOrWhiteSpace(item.Value));
-        if (identifier is null)
+        if (entity is null)
         {
             return dto;
         }
 
-        dto.IdentifierType = identifier.Type;
-        dto.IdentifierValue = identifier.Value;
+        if (needsIdentifier)
+        {
+            var identifier = entity.Identifiers.FirstOrDefault(item =>
+                !string.IsNullOrWhiteSpace(item.Type) && !string.IsNullOrWhiteSpace(item.Value));
+            if (identifier is not null)
+            {
+                dto.IdentifierType = identifier.Type;
+                dto.IdentifierValue = identifier.Value;
+            }
+        }
+
+        if (needsImage)
+        {
+            dto.ImageUrl = GetMetadata(entity.Metadata, "imageUrl");
+        }
+
         return dto;
     }
 
@@ -655,15 +839,39 @@ public class EntryService : IEntryService
             IdentifierValue = entry.IdentifierValue,
             Name = entry.Name,
             Link = entry.Link,
+            ImageUrl = entry.ImageUrl,
             Author = entry.Author,
             Director = entry.Director,
             Actors = entry.Actors,
+            Genre = entry.Genre,
+            Themes = entry.Themes,
             Read = entry.Read,
+            Visited = entry.Visited,
+            Seen = entry.Seen,
+            SeenAt = entry.SeenAt,
             Order = entry.Order,
             Attributes = new Dictionary<string, JsonElement>(entry.Attributes, StringComparer.Ordinal),
             Added = entry.Added,
             Edited = entry.Edited
         };
+
+    private static bool IsWatchableEntityType(string? entityType) =>
+        string.Equals(entityType, EntityTypes.Film, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(entityType, EntityTypes.Tv, StringComparison.OrdinalIgnoreCase);
+
+    private static DateTime? ResolveSeenAt(
+        bool? seen,
+        DateTime? requestedSeenAt,
+        DateTime? existingSeenAt,
+        DateTime now)
+    {
+        if (seen != true)
+        {
+            return null;
+        }
+
+        return requestedSeenAt ?? existingSeenAt ?? now;
+    }
 
     private sealed class EnrichmentFields
     {
@@ -674,6 +882,10 @@ public class EntryService : IEntryService
         public string? Director { get; set; }
 
         public string? Actors { get; set; }
+
+        public string? Genre { get; set; }
+
+        public string? Themes { get; set; }
 
         public string? Year { get; set; }
 

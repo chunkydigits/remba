@@ -14,11 +14,26 @@ public class ListDto
 
     public string? EntityType { get; set; }
 
+    public List<ListAttributeDefinitionDto> Attributes { get; set; } = [];
+
     public ListViewSettingsDto ViewSettings { get; set; } = new();
 
     public DateTime Added { get; set; }
 
     public DateTime? Edited { get; set; }
+}
+
+public class ListAttributeDefinitionDto
+{
+    public string Key { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+
+    public string Type { get; set; } = ListAttributeTypes.Text;
+
+    public string Scope { get; set; } = "entry";
 }
 
 public class ListViewSettingsDto

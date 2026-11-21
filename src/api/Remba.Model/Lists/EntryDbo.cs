@@ -32,6 +32,9 @@ public class EntryDbo
     [JsonPropertyName("link")]
     public string? Link { get; set; }
 
+    [JsonPropertyName("imageUrl")]
+    public string? ImageUrl { get; set; }
+
     [JsonPropertyName("author")]
     public string? Author { get; set; }
 
@@ -41,11 +44,35 @@ public class EntryDbo
     [JsonPropertyName("actors")]
     public string? Actors { get; set; }
 
+    [JsonPropertyName("genre")]
+    public string? Genre { get; set; }
+
+    [JsonPropertyName("themes")]
+    public string? Themes { get; set; }
+
     /// <summary>
     /// User relationship flag (books). Null when not applicable.
     /// </summary>
     [JsonPropertyName("read")]
     public bool? Read { get; set; }
+
+    /// <summary>
+    /// User relationship flag (countries). Null when not applicable.
+    /// </summary>
+    [JsonPropertyName("visited")]
+    public bool? Visited { get; set; }
+
+    /// <summary>
+    /// User relationship flag (films / TV). Null when not applicable.
+    /// </summary>
+    [JsonPropertyName("seen")]
+    public bool? Seen { get; set; }
+
+    /// <summary>
+    /// When the user marked the film / TV item as seen.
+    /// </summary>
+    [JsonPropertyName("seenAt")]
+    public DateTime? SeenAt { get; set; }
 
     [JsonPropertyName("order")]
     public int Order { get; set; }

@@ -4,6 +4,11 @@ public class EntitySearchResultDto
 {
     public string Provider { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Existing Remba catalog entity id when the hit came from local search.
+    /// </summary>
+    public string? EntityId { get; set; }
+
     public string IdentifierType { get; set; } = string.Empty;
 
     public string IdentifierValue { get; set; } = string.Empty;
@@ -19,6 +24,10 @@ public class EntitySearchResultDto
     public string? Director { get; set; }
 
     public string? Actors { get; set; }
+
+    public string? Genre { get; set; }
+
+    public string? Themes { get; set; }
 
     public string? ImageUrl { get; set; }
 

@@ -85,6 +85,51 @@ public class EntityRepository : IEntityRepository
         return null;
     }
 
+    public async Task<IReadOnlyList<EntityDbo>> SearchAsync(
+        string entityType,
+        string query,
+        int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var normalisedType = StringUtilities.NormalizeWhitespace(entityType);
+        var normalisedQuery = StringUtilities.NormalizeWhitespace(query);
+        if (string.IsNullOrWhiteSpace(normalisedType)
+            || string.IsNullOrWhiteSpace(normalisedQuery)
+            || limit <= 0)
+        {
+            return [];
+        }
+
+        const string queryText = """
+            SELECT TOP @limit * FROM c
+            WHERE StringEquals(c["type"], @type, true)
+              AND (
+                CONTAINS(c["name"], @query, true)
+                OR EXISTS (
+                  SELECT VALUE i FROM i IN c.identifiers
+                  WHERE CONTAINS(i["value"], @query, true)
+                )
+              )
+            """;
+
+        var definition = new QueryDefinition(queryText)
+            .WithParameter("@type", normalisedType)
+            .WithParameter("@query", normalisedQuery)
+            .WithParameter("@limit", Math.Clamp(limit, 1, 25));
+
+        var results = new List<EntityDbo>();
+        using var iterator = _container.GetItemQueryIterator<EntityDbo>(definition);
+        while (iterator.HasMoreResults && results.Count < limit)
+        {
+            var page = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+            results.AddRange(page.Resource);
+        }
+
+        return results
+            .Take(limit)
+            .ToList();
+    }
+
     public async Task<EntityDbo> CreateAsync(EntityDbo entity, CancellationToken cancellationToken = default)
     {
         ValidateForWrite(entity);

@@ -149,6 +149,7 @@ public partial class OmdbLookupProvider : IEntityLookupProvider
             Subtitle = NullIfNaa(payload.Director) ?? NullIfNaa(payload.Type),
             Director = NullIfNaa(payload.Director),
             Actors = NullIfNaa(payload.Actors),
+            Genre = NullIfNaa(payload.Genre),
             ImageUrl = NullIfNaa(payload.Poster),
             Link = $"https://www.imdb.com/title/{payload.ImdbId}/"
         };
@@ -204,6 +205,9 @@ public partial class OmdbLookupProvider : IEntityLookupProvider
 
         [JsonPropertyName("Actors")]
         public string? Actors { get; set; }
+
+        [JsonPropertyName("Genre")]
+        public string? Genre { get; set; }
 
         [JsonPropertyName("Type")]
         public string? Type { get; set; }

@@ -3,6 +3,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MaterialModule } from '../../../../core/material.module';
 import { EntityTypeSelectComponent } from '../entity-type-select/entity-type-select.component';
 import {
+  LIST_ATTRIBUTE_TYPE_OPTIONS,
+  ListAttributeDefinition,
+  ListAttributeType,
   ListDetail,
   ListFieldKey,
   UpdateListRequest,
@@ -29,6 +32,8 @@ export class ListSettingsComponent implements OnChanges {
   @Output() readonly saveViewSettings = new EventEmitter<UpdateListViewSettingsRequest>();
   @Output() readonly deleteList = new EventEmitter<void>();
 
+  readonly attributeTypeOptions = LIST_ATTRIBUTE_TYPE_OPTIONS;
+
   readonly detailsForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
     description: ['', [Validators.maxLength(1000)]],
@@ -40,7 +45,14 @@ export class ListSettingsComponent implements OnChanges {
     viewMode: ['list', Validators.required],
   });
 
+  readonly propertyForm = this.formBuilder.nonNullable.group({
+    name: ['', [Validators.required, Validators.maxLength(80)]],
+    description: ['', [Validators.maxLength(400)]],
+    type: ['text' as ListAttributeType, Validators.required],
+  });
+
   visibleFieldKeys: ListFieldKey[] = ['name'];
+  customProperties: ListAttributeDefinition[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['list'] || !this.list) {
@@ -61,6 +73,8 @@ export class ListSettingsComponent implements OnChanges {
     const saved = this.list.viewSettings.visibleFields?.filter(Boolean) as ListFieldKey[] | undefined;
     this.visibleFieldKeys =
       saved && saved.length > 0 ? [...saved] : defaultVisibleFields(this.list.entityType);
+
+    this.customProperties = (this.list.attributes || []).map((attribute) => ({ ...attribute }));
   }
 
   availableFields() {
@@ -86,6 +100,51 @@ export class ListSettingsComponent implements OnChanges {
     }
   }
 
+  attributeTypeLabel(type: string): string {
+    return this.attributeTypeOptions.find((option) => option.value === type)?.label || type;
+  }
+
+  onAddProperty(): void {
+    if (this.propertyForm.invalid) {
+      this.propertyForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.propertyForm.getRawValue();
+    const name = value.name.trim();
+    const key = this.slugify(name);
+    if (!key) {
+      this.propertyForm.controls.name.setErrors({ invalidKey: true });
+      return;
+    }
+
+    if (this.customProperties.some((property) => property.key.toLowerCase() === key.toLowerCase())) {
+      this.propertyForm.controls.name.setErrors({ duplicate: true });
+      return;
+    }
+
+    this.customProperties = [
+      ...this.customProperties,
+      {
+        key,
+        name,
+        description: value.description.trim() || undefined,
+        type: value.type,
+        scope: 'entry',
+      },
+    ];
+
+    this.propertyForm.reset({
+      name: '',
+      description: '',
+      type: 'text',
+    });
+  }
+
+  onRemoveProperty(key: string): void {
+    this.customProperties = this.customProperties.filter((property) => property.key !== key);
+  }
+
   onSaveDetails(): void {
     if (this.detailsForm.invalid) {
       this.detailsForm.markAllAsTouched();
@@ -98,6 +157,12 @@ export class ListSettingsComponent implements OnChanges {
       description: value.description,
       entityType: value.entityType || undefined,
       visibility: value.visibility,
+      attributes: this.customProperties.map((property) => ({
+        key: property.key,
+        name: property.name,
+        description: property.description || undefined,
+        type: property.type,
+      })),
     });
   }
 
@@ -115,5 +180,14 @@ export class ListSettingsComponent implements OnChanges {
 
   onDelete(): void {
     this.deleteList.emit();
+  }
+
+  private slugify(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
   }
 }

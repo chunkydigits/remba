@@ -21,6 +21,65 @@
       </mat-select>
     </mat-form-field>
 
+    <div class="list-settings__properties">
+      <h3>Custom properties</h3>
+      <p class="list-settings__hint">
+        Extra fields for items on this list. Saved with your list, not the shared template.
+      </p>
+
+      @if (customProperties.length > 0) {
+        <ul class="list-settings__property-list">
+          @for (property of customProperties; track property.key) {
+            <li class="list-settings__property">
+              <div class="list-settings__property-text">
+                <span class="list-settings__property-name">{{ property.name }}</span>
+                <span class="list-settings__property-meta">
+                  {{ attributeTypeLabel(property.type) }}
+                  @if (property.description) {
+                    · {{ property.description }}
+                  }
+                </span>
+              </div>
+              <button
+                mat-icon-button
+                type="button"
+                aria-label="Remove property"
+                (click)="onRemoveProperty(property.key)"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="list-settings__property-form" [formGroup]="propertyForm">
+        <mat-form-field appearance="outline">
+          <mat-label>Property name</mat-label>
+          <input matInput formControlName="name" />
+          @if (propertyForm.controls.name.hasError('duplicate')) {
+            <mat-error>That property already exists</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Description (optional)</mat-label>
+          <input matInput formControlName="description" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Type</mat-label>
+          <mat-select formControlName="type">
+            @for (option of attributeTypeOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-stroked-button type="button" (click)="onAddProperty()">Add property</button>
+      </div>
+    </div>
+
     <button mat-flat-button color="primary" type="submit">Save details</button>
   </form>
 

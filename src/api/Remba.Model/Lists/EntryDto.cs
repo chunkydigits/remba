@@ -20,13 +20,25 @@ public class EntryDto
 
     public string? Link { get; set; }
 
+    public string? ImageUrl { get; set; }
+
     public string? Author { get; set; }
 
     public string? Director { get; set; }
 
     public string? Actors { get; set; }
 
+    public string? Genre { get; set; }
+
+    public string? Themes { get; set; }
+
     public bool? Read { get; set; }
+
+    public bool? Visited { get; set; }
+
+    public bool? Seen { get; set; }
+
+    public DateTime? SeenAt { get; set; }
 
     public int Order { get; set; }
 
@@ -45,8 +57,17 @@ public class CreateEntryRequest
 
     public EntityIdentifierRequest? Identifier { get; set; }
 
+    /// <summary>
+    /// Reuse an existing catalog entity (e.g. from local search) instead of creating one.
+    /// </summary>
+    [MaxLength(64)]
+    public string? EntityId { get; set; }
+
     [MaxLength(2000)]
     public string? Link { get; set; }
+
+    [MaxLength(2000)]
+    public string? ImageUrl { get; set; }
 
     [MaxLength(400)]
     public string? Author { get; set; }
@@ -57,7 +78,19 @@ public class CreateEntryRequest
     [MaxLength(800)]
     public string? Actors { get; set; }
 
+    [MaxLength(400)]
+    public string? Genre { get; set; }
+
+    [MaxLength(800)]
+    public string? Themes { get; set; }
+
     public bool? Read { get; set; }
+
+    public bool? Visited { get; set; }
+
+    public bool? Seen { get; set; }
+
+    public DateTime? SeenAt { get; set; }
 
     public Dictionary<string, string>? Metadata { get; set; }
 
@@ -72,6 +105,9 @@ public class UpdateEntryRequest
     [MaxLength(2000)]
     public string? Link { get; set; }
 
+    [MaxLength(2000)]
+    public string? ImageUrl { get; set; }
+
     [MaxLength(400)]
     public string? Author { get; set; }
 
@@ -81,7 +117,19 @@ public class UpdateEntryRequest
     [MaxLength(800)]
     public string? Actors { get; set; }
 
+    [MaxLength(400)]
+    public string? Genre { get; set; }
+
+    [MaxLength(800)]
+    public string? Themes { get; set; }
+
     public bool? Read { get; set; }
+
+    public bool? Visited { get; set; }
+
+    public bool? Seen { get; set; }
+
+    public DateTime? SeenAt { get; set; }
 
     public Dictionary<string, JsonElement>? Attributes { get; set; }
 }
@@ -100,10 +148,24 @@ public class EntryQuery
 
     public string? Actors { get; set; }
 
+    public string? Genre { get; set; }
+
+    public string? Themes { get; set; }
+
     /// <summary>
     /// true / false / null (all)
     /// </summary>
     public bool? Read { get; set; }
+
+    /// <summary>
+    /// true / false / null (all)
+    /// </summary>
+    public bool? Visited { get; set; }
+
+    /// <summary>
+    /// true / false / null (all)
+    /// </summary>
+    public bool? Seen { get; set; }
 }
 
 public class ReorderEntriesRequest
@@ -125,7 +187,17 @@ public static class EntrySortFields
 
     public const string Actors = "actors";
 
+    public const string Genre = "genre";
+
+    public const string Themes = "themes";
+
     public const string Added = "added";
 
     public const string Read = "read";
+
+    public const string Visited = "visited";
+
+    public const string Seen = "seen";
+
+    public const string SeenAt = "seenAt";
 }

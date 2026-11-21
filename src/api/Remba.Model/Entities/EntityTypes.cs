@@ -9,6 +9,8 @@ public static class EntityTypes
     public const string Book = "book";
 
     public const string Recipe = "recipe";
+
+    public const string Country = "country";
 }
 
 public static class EntityIdentifierTypes
@@ -27,4 +29,6 @@ public static class EntityLookupProviders
     public const string Imdb = "imdb";
 
     public const string OpenLibrary = "openlibrary";
+
+    public const string Remba = "remba";
 }

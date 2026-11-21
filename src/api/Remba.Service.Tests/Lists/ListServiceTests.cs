@@ -54,6 +54,75 @@ public class ListServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_WhenAttributesProvided_ThenShouldReplaceListConfigurationAttributes()
+    {
+        var existing = new ListDbo
+        {
+            Id = "list1",
+            OwnerId = "user1",
+            RecordType = ListRecordTypes.List,
+            Name = "Books",
+            Visibility = ListVisibility.Private,
+            Configuration = new ListConfigurationDbo
+            {
+                EntityType = "book",
+                Attributes =
+                [
+                    new ListAttributeDefinitionDbo
+                    {
+                        Key = "old",
+                        Name = "Old",
+                        Type = ListAttributeTypes.Text,
+                        Scope = "entry"
+                    }
+                ]
+            },
+            ViewSettings = new ListViewSettingsDbo(),
+            Added = DateTime.UtcNow.AddDays(-1),
+            AddedByUserId = "user1"
+        };
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        _repository
+            .Setup(repository => repository.UpdateAsync(It.IsAny<ListDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ListDbo list, CancellationToken _) => list);
+
+        var service = CreateService();
+
+        var result = await service.UpdateAsync(
+            "user1",
+            "list1",
+            new UpdateListRequest
+            {
+                Attributes =
+                [
+                    new ListAttributeDefinitionRequest
+                    {
+                        Name = "Page count",
+                        Description = "Total pages",
+                        Type = "number"
+                    },
+                    new ListAttributeDefinitionRequest
+                    {
+                        Name = "Finished",
+                        Type = "true/false"
+                    }
+                ]
+            });
+
+        Assert.Equal(2, result.Attributes.Count);
+        Assert.Equal("page-count", result.Attributes[0].Key);
+        Assert.Equal("Page count", result.Attributes[0].Name);
+        Assert.Equal("Total pages", result.Attributes[0].Description);
+        Assert.Equal(ListAttributeTypes.Number, result.Attributes[0].Type);
+        Assert.Equal("finished", result.Attributes[1].Key);
+        Assert.Equal(ListAttributeTypes.Boolean, result.Attributes[1].Type);
+        Assert.All(result.Attributes, attribute => Assert.Equal("entry", attribute.Scope));
+    }
+
+    [Fact]
     public async Task UpdateViewSettingsAsync_WhenValid_ThenShouldPersistSettings()
     {
         var existing = new ListDbo

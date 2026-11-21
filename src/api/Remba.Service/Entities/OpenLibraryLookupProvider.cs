@@ -90,10 +90,14 @@ public partial class OpenLibraryLookupProvider : IEntityLookupProvider
         string query,
         CancellationToken cancellationToken)
     {
-        // Request isbn/key explicitly — default payloads often omit isbn on work hits.
+        // Prefer English editions: language:eng requires an English edition; lang=en
+        // boosts the English edition into the editions payload (title/isbn).
+        var englishQuery = $"{query} language:eng";
         var url =
-            $"search.json?q={Uri.EscapeDataString(query)}&limit=10" +
-            "&fields=key,title,author_name,first_publish_year,isbn,cover_i,cover_edition_key";
+            $"search.json?q={Uri.EscapeDataString(englishQuery)}" +
+            "&lang=en&limit=10" +
+            "&fields=key,title,author_name,first_publish_year,isbn,cover_i,cover_edition_key,language,subject,subject_key," +
+            "editions,editions.key,editions.title,editions.isbn,editions.language";
         using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
@@ -109,7 +113,7 @@ public partial class OpenLibraryLookupProvider : IEntityLookupProvider
         var results = new List<EntitySearchResultDto>();
         foreach (var doc in payload.Docs)
         {
-            if (string.IsNullOrWhiteSpace(doc.Title))
+            if (!HasEnglishLanguage(doc))
             {
                 continue;
             }
@@ -126,11 +130,17 @@ public partial class OpenLibraryLookupProvider : IEntityLookupProvider
 
     private EntitySearchResultDto? MapSearchDoc(OpenLibrarySearchDoc doc)
     {
-        var isbn = doc.Isbn?
-            .Select(value => IsbnDigits().Replace(value, string.Empty))
-            .FirstOrDefault(IsIsbn);
+        var edition = PreferEnglishEdition(doc);
+        var title = StringUtilities.NormalizeWhitespace(edition?.Title)
+            ?? StringUtilities.NormalizeWhitespace(doc.Title);
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
 
+        var isbn = FirstIsbn(edition?.Isbn) ?? FirstIsbn(doc.Isbn);
         var authors = FormatAuthors(doc.AuthorName);
+        var (genre, themes) = BookSubjectClassifier.Classify(doc.Subject);
 
         if (!string.IsNullOrWhiteSpace(isbn))
         {
@@ -139,10 +149,12 @@ public partial class OpenLibraryLookupProvider : IEntityLookupProvider
                 Provider = ProviderKey,
                 IdentifierType = EntityIdentifierTypes.Isbn,
                 IdentifierValue = isbn,
-                Name = doc.Title!,
+                Name = title,
                 Year = doc.FirstPublishYear?.ToString(),
                 Subtitle = authors,
                 Author = authors,
+                Genre = genre,
+                Themes = themes,
                 ImageUrl = CoverUrl(doc),
                 Link = $"https://openlibrary.org/isbn/{isbn}"
             };
@@ -159,14 +171,50 @@ public partial class OpenLibraryLookupProvider : IEntityLookupProvider
             Provider = ProviderKey,
             IdentifierType = EntityIdentifierTypes.OpenLibraryWork,
             IdentifierValue = workId,
-            Name = doc.Title!,
+            Name = title,
             Year = doc.FirstPublishYear?.ToString(),
             Subtitle = authors,
             Author = authors,
+            Genre = genre,
+            Themes = themes,
             ImageUrl = CoverUrl(doc),
             Link = $"https://openlibrary.org/works/{workId}"
         };
     }
+
+    private static bool HasEnglishLanguage(OpenLibrarySearchDoc doc)
+    {
+        if (doc.Language is { Count: > 0 })
+        {
+            return doc.Language.Any(IsEnglishLanguageCode);
+        }
+
+        var edition = PreferEnglishEdition(doc);
+        return edition?.Language is null
+            || edition.Language.Count == 0
+            || edition.Language.Any(IsEnglishLanguageCode);
+    }
+
+    private static OpenLibraryEditionDoc? PreferEnglishEdition(OpenLibrarySearchDoc doc)
+    {
+        var editions = doc.Editions?.Docs;
+        if (editions is null || editions.Count == 0)
+        {
+            return null;
+        }
+
+        return editions.FirstOrDefault(edition =>
+                   edition.Language is { Count: > 0 } && edition.Language.Any(IsEnglishLanguageCode))
+               ?? editions[0];
+    }
+
+    private static string? FirstIsbn(IEnumerable<string>? values) =>
+        values?
+            .Select(value => IsbnDigits().Replace(value, string.Empty))
+            .FirstOrDefault(IsIsbn);
+
+    private static bool IsEnglishLanguageCode(string? code) =>
+        string.Equals(code?.Trim(), "eng", StringComparison.OrdinalIgnoreCase);
 
     private static EntitySearchResultDto MapBook(string isbn, OpenLibraryBookData book)
     {
@@ -249,6 +297,12 @@ public partial class OpenLibraryLookupProvider : IEntityLookupProvider
         [JsonPropertyName("author_name")]
         public List<string>? AuthorName { get; set; }
 
+        [JsonPropertyName("subject")]
+        public List<string>? Subject { get; set; }
+
+        [JsonPropertyName("language")]
+        public List<string>? Language { get; set; }
+
         [JsonPropertyName("first_publish_year")]
         public int? FirstPublishYear { get; set; }
 
@@ -260,6 +314,30 @@ public partial class OpenLibraryLookupProvider : IEntityLookupProvider
 
         [JsonPropertyName("cover_edition_key")]
         public string? CoverEditionKey { get; set; }
+
+        [JsonPropertyName("editions")]
+        public OpenLibraryEditionsPayload? Editions { get; set; }
+    }
+
+    private sealed class OpenLibraryEditionsPayload
+    {
+        [JsonPropertyName("docs")]
+        public List<OpenLibraryEditionDoc>? Docs { get; set; }
+    }
+
+    private sealed class OpenLibraryEditionDoc
+    {
+        [JsonPropertyName("key")]
+        public string? Key { get; set; }
+
+        [JsonPropertyName("title")]
+        public string? Title { get; set; }
+
+        [JsonPropertyName("isbn")]
+        public List<string>? Isbn { get; set; }
+
+        [JsonPropertyName("language")]
+        public List<string>? Language { get; set; }
     }
 
     private sealed class OpenLibraryBookData

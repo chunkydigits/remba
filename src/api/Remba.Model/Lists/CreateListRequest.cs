@@ -31,6 +31,28 @@ public class UpdateListRequest
 
     [MaxLength(20)]
     public string? Visibility { get; set; }
+
+    /// <summary>
+    /// When provided, replaces the list's custom entry properties.
+    /// </summary>
+    public List<ListAttributeDefinitionRequest>? Attributes { get; set; }
+}
+
+public class ListAttributeDefinitionRequest
+{
+    [MaxLength(80)]
+    public string? Key { get; set; }
+
+    [Required]
+    [MaxLength(80)]
+    public string Name { get; set; } = string.Empty;
+
+    [MaxLength(400)]
+    public string? Description { get; set; }
+
+    [Required]
+    [MaxLength(20)]
+    public string Type { get; set; } = ListAttributeTypes.Text;
 }
 
 public class UpdateListViewSettingsRequest

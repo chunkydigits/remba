@@ -1,5 +1,6 @@
 export interface EntitySearchResult {
   provider: string;
+  entityId?: string | null;
   identifierType: string;
   identifierValue: string;
   name: string;
@@ -8,6 +9,8 @@ export interface EntitySearchResult {
   author?: string | null;
   director?: string | null;
   actors?: string | null;
+  genre?: string | null;
+  themes?: string | null;
   imageUrl?: string | null;
   link?: string | null;
   alreadyOnList?: boolean;
