@@ -724,6 +724,11 @@ public class EntryService : IEntryService
             return identifierValue;
         }
 
+        if (string.Equals(identifierType, EntityIdentifierTypes.Iso2, StringComparison.OrdinalIgnoreCase))
+        {
+            return $"https://flagdex.net/flags/{identifierValue.Trim().ToLowerInvariant()}.svg";
+        }
+
         return null;
     }
 

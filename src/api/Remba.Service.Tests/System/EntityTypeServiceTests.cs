@@ -38,6 +38,37 @@ public class EntityTypeServiceTests
     }
 
     [Fact]
+    public async Task EnsureDefaultsAsync_WhenCountryLookupDisabled_ThenShouldEnableLookup()
+    {
+        var existing = EntityTypeDefaults.CreateAll(DateTime.UtcNow)
+            .First(item => item.Key == "country");
+        existing.SupportsLookup = false;
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string id, CancellationToken _) =>
+                id == existing.Id ? existing : new EntityTypeDbo
+                {
+                    Id = id,
+                    Key = id.Replace("entity-type:", string.Empty, StringComparison.Ordinal),
+                    Name = "Other",
+                    Visibility = EntityTypeVisibility.System,
+                    SupportsLookup = true
+                });
+        _repository
+            .Setup(repository => repository.UpdateAsync(It.IsAny<EntityTypeDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((EntityTypeDbo item, CancellationToken _) => item);
+
+        await CreateService().EnsureDefaultsAsync();
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(
+                It.Is<EntityTypeDbo>(item => item.Key == "country" && item.SupportsLookup),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task CreatePrivateAsync_WhenValid_ThenShouldCreateWithoutLookup()
     {
         _repository

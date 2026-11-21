@@ -16,4 +16,6 @@ public interface IEntityTypeRepository
         CancellationToken cancellationToken = default);
 
     Task<EntityTypeDbo> CreateAsync(EntityTypeDbo entityType, CancellationToken cancellationToken = default);
+
+    Task<EntityTypeDbo> UpdateAsync(EntityTypeDbo entityType, CancellationToken cancellationToken = default);
 }

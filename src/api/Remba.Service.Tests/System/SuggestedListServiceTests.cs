@@ -47,6 +47,13 @@ public class SuggestedListServiceTests
                 It.Is<SuggestedListDbo>(item => item.SeedKey == SuggestedListSeedKeys.Tv),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+        _repository.Verify(
+            repository => repository.CreateAsync(
+                It.Is<SuggestedListDbo>(item =>
+                    item.SeedKey == SuggestedListSeedKeys.Countries
+                    && item.Identifier.Type == SuggestedListIdentifierTypes.Iso2),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -69,6 +76,41 @@ public class SuggestedListServiceTests
         _repository.Verify(
             repository => repository.UpdateAsync(It.IsAny<SuggestedListDbo>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task EnsureDefaultsAsync_WhenCountriesStillOnUrlProvider_ThenShouldUpgrade()
+    {
+        var existing = SuggestedListDefaults.CreateCountries(DateTime.UtcNow);
+        existing.Identifier.Type = SuggestedListIdentifierTypes.Url;
+        existing.Enrichment.Provider = "url";
+
+        _repository
+            .Setup(repository => repository.GetBySeedKeyAsync(
+                SuggestedListSeedKeys.Countries,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        _repository
+            .Setup(repository => repository.GetBySeedKeyAsync(
+                It.Is<string>(key => key != SuggestedListSeedKeys.Countries),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SuggestedListDefaults.CreateFilms(DateTime.UtcNow));
+        _repository
+            .Setup(repository => repository.UpdateAsync(It.IsAny<SuggestedListDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SuggestedListDbo item, CancellationToken _) => item);
+
+        var service = CreateService();
+
+        await service.EnsureDefaultsAsync();
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(
+                It.Is<SuggestedListDbo>(item =>
+                    item.SeedKey == SuggestedListSeedKeys.Countries
+                    && item.Identifier.Type == SuggestedListIdentifierTypes.Iso2
+                    && item.Enrichment.Provider == "flagdex"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

@@ -25,13 +25,20 @@ public partial class EntityTypeService : IEntityTypeService
         foreach (var template in EntityTypeDefaults.CreateAll(now))
         {
             var existing = await _repository.GetByIdAsync(template.Id, cancellationToken).ConfigureAwait(false);
-            if (existing is not null)
+            if (existing is null)
             {
+                await _repository.CreateAsync(template, cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Seeded entity type '{Key}'", template.Key);
                 continue;
             }
 
-            await _repository.CreateAsync(template, cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("Seeded entity type '{Key}'", template.Key);
+            if (template.SupportsLookup && !existing.SupportsLookup)
+            {
+                existing.SupportsLookup = true;
+                existing.Edited = now;
+                await _repository.UpdateAsync(existing, cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Enabled lookup for entity type '{Key}'", existing.Key);
+            }
         }
     }
 

@@ -1,3 +1,4 @@
+using Remba.Model.Entities;
 using Remba.Model.Lists;
 
 namespace Remba.Model.System;
@@ -108,18 +109,22 @@ public static class SuggestedListDefaults
             utcNow,
             SuggestedListSeedKeys.Countries,
             name: "Countries",
-            description: "Countries to visit, visited, or remember.",
+            description: "Countries you've been to, or want to visit.",
             sortOrder: 5,
             entityType: "country",
-            identifierType: SuggestedListIdentifierTypes.Url,
-            identifierLabel: "URL",
-            urlTemplate: "{value}",
-            provider: "url",
+            identifierType: SuggestedListIdentifierTypes.Iso2,
+            identifierLabel: "ISO code",
+            urlTemplate: "https://flagdex.net/flags/{value}.svg",
+            provider: EntityLookupProviders.Flagdex,
             availableAttributes:
             [
-                Attr("title", "Name")
+                Attr("title", "Name"),
+                Attr("iso2", "ISO code"),
+                Attr("region", "Region"),
+                Attr("capital", "Capital"),
+                Attr("flagUrl", "Flag URL")
             ],
-            defaultSelectedKeys: ["title"]);
+            defaultSelectedKeys: ["title", "region", "flagUrl"]);
 
     private static SuggestedListDbo Create(
         DateTime utcNow,

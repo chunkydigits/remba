@@ -63,6 +63,17 @@ public class InMemoryEntityTypeRepository : IEntityTypeRepository
         return Task.FromResult(Clone(entityType)!);
     }
 
+    public Task<EntityTypeDbo> UpdateAsync(EntityTypeDbo entityType, CancellationToken cancellationToken = default)
+    {
+        if (StringUtilities.IsNullOrWhiteSpace(entityType.Id) || !_items.ContainsKey(entityType.Id))
+        {
+            throw new InvalidOperationException($"Entity type '{entityType.Id}' was not found.");
+        }
+
+        _items[entityType.Id] = Clone(entityType)!;
+        return Task.FromResult(Clone(entityType)!);
+    }
+
     private static bool IsVisibleTo(EntityTypeDbo item, string? ownerId) =>
         item.Visibility is EntityTypeVisibility.System or EntityTypeVisibility.Public
         || (item.Visibility == EntityTypeVisibility.Private

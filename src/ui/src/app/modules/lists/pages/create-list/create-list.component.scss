@@ -1,5 +1,58 @@
 .create-list {
-  max-width: 32rem;
+  max-width: 40rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.create-list__starters h2 {
+  margin: 0 0 0.35rem;
+  font: var(--mat-sys-title-medium);
+}
+
+.create-list__hint {
+  margin: 0 0 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.create-list__starter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.65rem;
+}
+
+.create-list__starter {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 80%, transparent);
+  border-radius: 0.75rem;
+  background: var(--mat-sys-surface-container-low);
+  color: inherit;
+  text-align: left;
+  padding: 0.85rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  cursor: pointer;
+  min-height: 5.5rem;
+}
+
+.create-list__starter:hover {
+  border-color: color-mix(in srgb, var(--mat-sys-primary) 45%, transparent);
+}
+
+.create-list__starter--selected {
+  border-color: var(--mat-sys-primary);
+  background: color-mix(in srgb, var(--mat-sys-primary) 10%, var(--mat-sys-surface));
+}
+
+.create-list__starter-name {
+  font: var(--mat-sys-title-small);
+}
+
+.create-list__starter-desc {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
 }
 
 .create-list__form {
@@ -17,6 +70,6 @@
 }
 
 .create-list__error {
-  margin: 0.75rem 0 0;
+  margin: 0;
   color: var(--mat-sys-error);
 }

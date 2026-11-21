@@ -2,12 +2,14 @@ import { AsyncPipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, Subject, catchError, of, switchMap, tap } from 'rxjs';
+import { Observable, Subject, catchError, of, shareReplay, switchMap, tap } from 'rxjs';
 import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
 import { MaterialModule } from '../../../../core/material.module';
 import { EntityTypeSelectComponent } from '../../components/entity-type-select/entity-type-select.component';
 import { ListService } from '../../services/list.service';
+import { SuggestedListService } from '../../services/suggested-list.service';
 import { ListDetail } from '../../models/list.model';
+import { SuggestedListDetail } from '../../models/suggested-list.model';
 
 @Component({
   selector: 'app-create-list',
@@ -25,10 +27,12 @@ import { ListDetail } from '../../models/list.model';
 export class CreateListComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly listService = inject(ListService);
+  private readonly suggestedListService = inject(SuggestedListService);
   private readonly router = inject(Router);
   private readonly saveRequests = new Subject<void>();
 
   saveError = '';
+  selectedSeedKey: string | null = null;
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -36,6 +40,11 @@ export class CreateListComponent {
     entityType: ['', [Validators.maxLength(40)]],
     visibility: ['private', Validators.required],
   });
+
+  readonly suggestedLists$: Observable<SuggestedListDetail[]> = this.suggestedListService.getAll().pipe(
+    catchError(() => of([])),
+    shareReplay({ bufferSize: 1, refCount: true }),
+  );
 
   readonly saveResult$: Observable<ListDetail | null> = this.saveRequests.pipe(
     switchMap(() => {
@@ -65,6 +74,15 @@ export class CreateListComponent {
         );
     }),
   );
+
+  onUseSuggested(template: SuggestedListDetail): void {
+    this.selectedSeedKey = template.seedKey;
+    this.form.patchValue({
+      name: template.name,
+      description: template.description || '',
+      entityType: template.entityType || '',
+    });
+  }
 
   onSave(): void {
     this.saveRequests.next();

@@ -1,5 +1,27 @@
 <app-page-template title="Create list">
   <section class="create-list">
+    @if (suggestedLists$ | async; as suggested) {
+      @if (suggested.length > 0) {
+        <div class="create-list__starters">
+          <h2>Start from a collection</h2>
+          <p class="create-list__hint">Pick one to prefill the form, then create your own copy.</p>
+          <div class="create-list__starter-grid">
+            @for (template of suggested; track template.seedKey) {
+              <button
+                type="button"
+                class="create-list__starter"
+                [class.create-list__starter--selected]="selectedSeedKey === template.seedKey"
+                (click)="onUseSuggested(template)"
+              >
+                <span class="create-list__starter-name">{{ template.name }}</span>
+                <span class="create-list__starter-desc">{{ template.description }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    }
+
     <form class="create-list__form" [formGroup]="form" (ngSubmit)="onSave()">
       <mat-form-field appearance="outline">
         <mat-label>Name</mat-label>

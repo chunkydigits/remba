@@ -206,6 +206,8 @@ export class EditEntryComponent {
         return { label: 'IMDb', value };
       case 'openlibrarywork':
         return { label: 'Open Library', value };
+      case 'iso2':
+        return { label: 'ISO', value };
       case 'url':
         return { label: 'URL', value };
       default:

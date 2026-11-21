@@ -141,6 +141,23 @@ public class EntityTypeRepository : IEntityTypeRepository
         return response.Resource;
     }
 
+    public async Task<EntityTypeDbo> UpdateAsync(
+        EntityTypeDbo entityType,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateForWrite(entityType);
+
+        var response = await _container
+            .ReplaceItemAsync(
+                entityType,
+                entityType.Id,
+                new PartitionKey(entityType.Id),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        return response.Resource;
+    }
+
     private static void ValidateForWrite(EntityTypeDbo entityType)
     {
         if (StringUtilities.IsNullOrWhiteSpace(entityType.Id))

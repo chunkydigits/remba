@@ -21,6 +21,8 @@ public static class EntityIdentifierTypes
 
     public const string OpenLibraryWork = "openLibraryWork";
 
+    public const string Iso2 = "iso2";
+
     public const string Url = "url";
 }
 
@@ -29,6 +31,8 @@ public static class EntityLookupProviders
     public const string Imdb = "imdb";
 
     public const string OpenLibrary = "openlibrary";
+
+    public const string Flagdex = "flagdex";
 
     public const string Remba = "remba";
 }

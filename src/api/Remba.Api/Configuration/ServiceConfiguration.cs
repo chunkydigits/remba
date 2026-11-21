@@ -19,11 +19,14 @@ public static class ServiceConfiguration
         services.Configure<UserCacheOptions>(configuration.GetSection(UserCacheOptions.SectionName));
         services.Configure<OmdbOptions>(configuration.GetSection(OmdbOptions.SectionName));
         services.Configure<OpenLibraryOptions>(configuration.GetSection(OpenLibraryOptions.SectionName));
+        services.Configure<FlagdexOptions>(configuration.GetSection(FlagdexOptions.SectionName));
         services.AddMemoryCache();
 
         var omdb = configuration.GetSection(OmdbOptions.SectionName).Get<OmdbOptions>() ?? new OmdbOptions();
         var openLibrary = configuration.GetSection(OpenLibraryOptions.SectionName).Get<OpenLibraryOptions>()
                           ?? new OpenLibraryOptions();
+        var flagdex = configuration.GetSection(FlagdexOptions.SectionName).Get<FlagdexOptions>()
+                      ?? new FlagdexOptions();
 
         services.AddHttpClient<OmdbLookupProvider>(client =>
         {
@@ -39,9 +42,16 @@ public static class ServiceConfiguration
             // Open Library asks callers to identify themselves.
             client.DefaultRequestHeaders.UserAgent.ParseAdd("Remba/1.0 (local-dev; books-search)");
         });
+        services.AddHttpClient<CountryLookupProvider>(client =>
+        {
+            client.BaseAddress = new Uri(
+                string.IsNullOrWhiteSpace(flagdex.BaseUrl) ? "https://flagdex.net/" : flagdex.BaseUrl);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Remba/1.0 (local-dev; country-search)");
+        });
 
         services.AddTransient<IEntityLookupProvider>(sp => sp.GetRequiredService<OmdbLookupProvider>());
         services.AddTransient<IEntityLookupProvider>(sp => sp.GetRequiredService<OpenLibraryLookupProvider>());
+        services.AddTransient<IEntityLookupProvider>(sp => sp.GetRequiredService<CountryLookupProvider>());
 
         services.AddScoped<IEntityLookupService, EntityLookupService>();
         services.AddScoped<IEntityTypeService, EntityTypeService>();

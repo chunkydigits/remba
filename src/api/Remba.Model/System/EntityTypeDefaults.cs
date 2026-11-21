@@ -10,7 +10,7 @@ public static class EntityTypeDefaults
         Create(utcNow, EntityTypes.Tv, "TV", supportsLookup: true),
         Create(utcNow, EntityTypes.Book, "Books", supportsLookup: true),
         Create(utcNow, EntityTypes.Recipe, "Recipes", supportsLookup: false),
-        Create(utcNow, EntityTypes.Country, "Countries", supportsLookup: false)
+        Create(utcNow, EntityTypes.Country, "Countries", supportsLookup: true)
     ];
 
     private static EntityTypeDbo Create(DateTime utcNow, string key, string name, bool supportsLookup) =>

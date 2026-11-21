@@ -31,7 +31,7 @@ import {
 import { CreateEntryRequest, ListEntry } from '../../models/entry.model';
 import { EntitySearchResult } from '../../models/entity.model';
 
-const LOOKUP_ENTITY_TYPES = new Set(['film', 'tv', 'book']);
+const LOOKUP_ENTITY_TYPES = new Set(['film', 'tv', 'book', 'country']);
 
 type AddMode = 'done' | 'another';
 
@@ -404,6 +404,8 @@ export class AddEntryComponent {
         return { label: 'IMDb', value };
       case 'openlibrarywork':
         return { label: 'Open Library', value };
+      case 'iso2':
+        return { label: 'ISO', value };
       default:
         return type ? { label: type, value } : { label: 'Identifier', value };
     }
@@ -449,6 +451,8 @@ export class AddEntryComponent {
       case 'tv':
       case 'film':
         return 'Search by title or IMDb ID';
+      case 'country':
+        return 'Search by country name or ISO code';
       default:
         return 'Search';
     }

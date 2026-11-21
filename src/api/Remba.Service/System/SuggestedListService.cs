@@ -28,14 +28,37 @@ public class SuggestedListService : ISuggestedListService
                 .GetBySeedKeyAsync(template.SeedKey, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (existing is not null)
+            if (existing is null)
             {
+                await _repository.CreateAsync(template, cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Seeded suggested list '{SeedKey}'", template.SeedKey);
                 continue;
             }
 
-            await _repository.CreateAsync(template, cancellationToken).ConfigureAwait(false);
-            _logger.LogInformation("Seeded suggested list '{SeedKey}'", template.SeedKey);
+            if (NeedsBuiltInUpgrade(existing, template))
+            {
+                existing.Name = template.Name;
+                existing.Description = template.Description;
+                existing.SortOrder = template.SortOrder;
+                existing.EntityType = template.EntityType;
+                existing.Identifier = template.Identifier;
+                existing.Enrichment = template.Enrichment;
+                existing.Edited = now;
+                await _repository.UpdateAsync(existing, cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Upgraded suggested list '{SeedKey}'", existing.SeedKey);
+            }
         }
+    }
+
+    private static bool NeedsBuiltInUpgrade(SuggestedListDbo existing, SuggestedListDbo template)
+    {
+        if (!string.Equals(existing.SeedKey, SuggestedListSeedKeys.Countries, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !string.Equals(existing.Identifier.Type, template.Identifier.Type, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(existing.Enrichment.Provider, template.Enrichment.Provider, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<IReadOnlyList<SuggestedListDto>> GetAllAsync(
