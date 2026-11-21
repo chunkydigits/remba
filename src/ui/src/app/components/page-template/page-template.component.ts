@@ -1,6 +1,7 @@
 import { AsyncPipe } from '@angular/common';
-import { Component, Input, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, Input, ViewChild, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { MatSidenav } from '@angular/material/sidenav';
 import { Observable } from 'rxjs';
 import { MaterialModule } from '../../core/material.module';
 import { AuthUiService } from '../../core/services/auth-ui.service';
@@ -10,13 +11,15 @@ import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-page-template',
-  imports: [AsyncPipe, RouterLink, MaterialModule],
+  imports: [AsyncPipe, RouterLink, RouterLinkActive, MaterialModule],
   templateUrl: './page-template.component.html',
   styleUrl: './page-template.component.scss',
 })
 export class PageTemplateComponent {
   @Input() title = '';
   @Input() showHeader = true;
+
+  @ViewChild('drawer') private readonly drawer?: MatSidenav;
 
   readonly authConfigured =
     !!environment.auth0.domain &&
@@ -38,11 +41,20 @@ export class PageTemplateComponent {
     this.theme$ = this.themeService.theme$;
   }
 
+  openMenu(): void {
+    void this.drawer?.open();
+  }
+
+  closeMenu(): void {
+    void this.drawer?.close();
+  }
+
   login(): void {
     this.authUi.login();
   }
 
   logout(): void {
+    this.closeMenu();
     this.authUi.logout();
   }
 

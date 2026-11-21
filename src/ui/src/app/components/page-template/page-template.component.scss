@@ -1,7 +1,96 @@
 .page-template {
   min-height: 100dvh;
+}
+
+.page-template__shell {
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
+}
+
+.page-template__drawer {
+  width: min(20rem, 86vw);
+  background: var(--mat-sys-surface-container-low);
+  border-right: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 70%, transparent);
+}
+
+.page-template__drawer-inner {
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.page-template__drawer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 0.65rem 0.85rem 1rem;
+  padding-top: max(0.85rem, env(safe-area-inset-top));
+  border-bottom: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 60%, transparent);
+}
+
+.page-template__drawer-brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.page-template__drawer-logo {
+  height: 1.85rem;
+  width: auto;
+  display: block;
+}
+
+.page-template__drawer-nav {
+  flex: 1 1 auto;
+  padding: 0.75rem 0.35rem;
+}
+
+.page-template__drawer-nav a[mat-list-item],
+.page-template__drawer-nav .mdc-list-item__content {
+  text-align: start;
+  justify-content: flex-start;
+}
+
+.page-template__drawer-footer {
+  margin-top: auto;
+  flex-shrink: 0;
+  padding: 0.75rem 1rem max(1rem, env(safe-area-inset-bottom));
+  border-top: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 60%, transparent);
+}
+
+.page-template__sign-out {
+  appearance: none;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.7rem 0.35rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-large);
+  text-align: left;
+  cursor: pointer;
+}
+
+.page-template__sign-out:hover {
+  background: color-mix(in srgb, var(--mat-sys-on-surface) 6%, transparent);
+}
+
+.page-template__sign-out mat-icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.page-template__nav-active {
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
 }
 
 .page-template__header {

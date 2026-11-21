@@ -1,64 +1,124 @@
-<div class="page-template">
-  @if (showHeader) {
-    <header class="page-template__header">
-      <div class="page-template__slot page-template__slot--start">
-        @if (authConfigured && (isAuthenticated$ | async)) {
-          <button
-            mat-icon-button
-            type="button"
-            [matMenuTriggerFor]="accountMenu"
-            aria-label="Open menu"
+<mat-sidenav-container class="page-template" [hasBackdrop]="true">
+  @if (authConfigured && (isAuthenticated$ | async)) {
+    <mat-sidenav
+      #drawer
+      class="page-template__drawer"
+      mode="over"
+      position="start"
+      [autoFocus]="false"
+      (keydown.escape)="closeMenu()"
+    >
+      <div class="page-template__drawer-inner">
+        <div class="page-template__drawer-top">
+          <a
+            routerLink="/"
+            class="page-template__drawer-brand"
+            aria-label="Remba home"
+            (click)="closeMenu()"
           >
-            <mat-icon>menu</mat-icon>
+            @if (theme$ | async; as theme) {
+              <img [src]="fullLogoSrc(theme)" alt="Remba" class="page-template__drawer-logo" />
+            }
+          </a>
+          <button mat-icon-button type="button" aria-label="Close menu" (click)="closeMenu()">
+            <mat-icon>close</mat-icon>
           </button>
+        </div>
 
-          <mat-menu #accountMenu="matMenu">
-            <a mat-menu-item routerLink="/lists">My lists</a>
-            <a mat-menu-item routerLink="/account">Account</a>
-            <a mat-menu-item routerLink="/settings">Settings</a>
-            <button mat-menu-item type="button" (click)="logout()">Sign out</button>
-          </mat-menu>
-        }
-      </div>
+        <mat-nav-list class="page-template__drawer-nav" aria-label="Main">
+          <a
+            mat-list-item
+            routerLink="/lists"
+            routerLinkActive="page-template__nav-active"
+            (click)="closeMenu()"
+          >
+            <mat-icon matListItemIcon>list_alt</mat-icon>
+            <span matListItemTitle>My lists</span>
+          </a>
+          <a
+            mat-list-item
+            routerLink="/account"
+            routerLinkActive="page-template__nav-active"
+            (click)="closeMenu()"
+          >
+            <mat-icon matListItemIcon>person</mat-icon>
+            <span matListItemTitle>Account</span>
+          </a>
+          <a
+            mat-list-item
+            routerLink="/settings"
+            routerLinkActive="page-template__nav-active"
+            (click)="closeMenu()"
+          >
+            <mat-icon matListItemIcon>settings</mat-icon>
+            <span matListItemTitle>Settings</span>
+          </a>
+        </mat-nav-list>
 
-      <a routerLink="/" class="page-template__brand" aria-label="Remba home">
-        @if (theme$ | async; as theme) {
-          <img
-            [src]="markLogoSrc(theme)"
-            alt="Remba"
-            class="page-template__logo page-template__logo--mark"
-          />
-          <img
-            [src]="fullLogoSrc(theme)"
-            alt="Remba"
-            class="page-template__logo page-template__logo--full"
-          />
-        }
-      </a>
-
-      <div class="page-template__slot page-template__slot--end">
-        <ng-content select="[pageHeaderEnd]"></ng-content>
-        @if (!authConfigured) {
-          <span class="page-template__hint">Auth0 needed</span>
-        } @else if (isLoading$ | async) {
-          <mat-spinner diameter="22"></mat-spinner>
-        } @else if ((isAuthenticated$ | async) === false) {
-          <button mat-flat-button color="primary" type="button" (click)="login()">
-            Sign in
+        <div class="page-template__drawer-footer">
+          <button
+            class="page-template__sign-out"
+            type="button"
+            (click)="logout()"
+          >
+            <mat-icon>logout</mat-icon>
+            <span>Sign out</span>
           </button>
-        }
+        </div>
       </div>
-    </header>
+    </mat-sidenav>
   }
 
-  @if (authError$ | async; as authError) {
-    <div class="page-template__error" role="alert">{{ authError }}</div>
-  }
+  <mat-sidenav-content class="page-template__shell">
+    @if (showHeader) {
+      <header class="page-template__header">
+        <div class="page-template__slot page-template__slot--start">
+          @if (authConfigured && (isAuthenticated$ | async)) {
+            <button mat-icon-button type="button" aria-label="Open menu" (click)="openMenu()">
+              <mat-icon>menu</mat-icon>
+            </button>
+          }
+        </div>
 
-  <main class="page-template__content">
-    @if (title) {
-      <h1 class="page-template__page-title">{{ title }}</h1>
+        <a routerLink="/" class="page-template__brand" aria-label="Remba home">
+          @if (theme$ | async; as theme) {
+            <img
+              [src]="markLogoSrc(theme)"
+              alt="Remba"
+              class="page-template__logo page-template__logo--mark"
+            />
+            <img
+              [src]="fullLogoSrc(theme)"
+              alt="Remba"
+              class="page-template__logo page-template__logo--full"
+            />
+          }
+        </a>
+
+        <div class="page-template__slot page-template__slot--end">
+          <ng-content select="[pageHeaderEnd]"></ng-content>
+          @if (!authConfigured) {
+            <span class="page-template__hint">Auth0 needed</span>
+          } @else if (isLoading$ | async) {
+            <mat-spinner diameter="22"></mat-spinner>
+          } @else if ((isAuthenticated$ | async) === false) {
+            <button mat-flat-button color="primary" type="button" (click)="login()">
+              Sign in
+            </button>
+          }
+        </div>
+      </header>
     }
-    <ng-content></ng-content>
-  </main>
-</div>
+
+    @if (authError$ | async; as authError) {
+      <div class="page-template__error" role="alert">{{ authError }}</div>
+    }
+
+    <main class="page-template__content">
+      @if (title) {
+        <h1 class="page-template__page-title">{{ title }}</h1>
+      }
+      <ng-content></ng-content>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
