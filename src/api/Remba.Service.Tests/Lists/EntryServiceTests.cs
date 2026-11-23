@@ -301,6 +301,29 @@ public class EntryServiceTests
     }
 
     [Fact]
+    public async Task GetListIdsContainingAsync_WhenIdentifierProvided_ThenShouldQueryRepository()
+    {
+        _entryRepository
+            .Setup(repository => repository.FindActiveListIdsContainingAsync(
+                "user1",
+                "isbn",
+                "9780000000000",
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { "list1", "list2" });
+
+        var results = await CreateService().GetListIdsContainingAsync(
+            "user1",
+            "isbn",
+            "9780000000000",
+            null);
+
+        Assert.Equal(2, results.Count);
+        Assert.Contains("list1", results);
+        Assert.Contains("list2", results);
+    }
+
+    [Fact]
     public async Task SoftDeleteAsync_WhenValid_ThenShouldMarkDeleted()
     {
         _listRepository

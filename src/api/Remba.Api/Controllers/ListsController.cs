@@ -12,15 +12,18 @@ namespace Remba.Api.Controllers;
 public class ListsController : ControllerBase
 {
     private readonly IListService _listService;
+    private readonly IEntryService _entryService;
     private readonly CurrentUserResolver _currentUserResolver;
     private readonly ILogger<ListsController> _logger;
 
     public ListsController(
         IListService listService,
+        IEntryService entryService,
         CurrentUserResolver currentUserResolver,
         ILogger<ListsController> logger)
     {
         _listService = listService;
+        _entryService = entryService;
         _currentUserResolver = currentUserResolver;
         _logger = logger;
     }
@@ -45,6 +48,56 @@ public class ListsController : ControllerBase
         {
             _logger.LogError(ex, "Failed to load lists");
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Unable to load lists." });
+        }
+    }
+
+    /// <summary>
+    /// Returns list ids that already contain an active entry for the given identifier and/or entity id.
+    /// Must be registered before <c>{listId}</c> routes.
+    /// </summary>
+    [HttpGet("containing")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetContaining(
+        [FromQuery] string? identifierType,
+        [FromQuery] string? identifierValue,
+        [FromQuery] string? entityId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var hasIdentifier = !string.IsNullOrWhiteSpace(identifierType)
+                && !string.IsNullOrWhiteSpace(identifierValue);
+            var hasEntityId = !string.IsNullOrWhiteSpace(entityId);
+            if (!hasIdentifier && !hasEntityId)
+            {
+                return BadRequest(new
+                {
+                    message = "Provide identifierType+identifierValue and/or entityId.",
+                });
+            }
+
+            var user = await _currentUserResolver.ResolveAsync(User, cancellationToken);
+            if (user is null)
+            {
+                return Unauthorized(new { message = "Authenticated subject was not found on the token." });
+            }
+
+            var listIds = await _entryService.GetListIdsContainingAsync(
+                user.Id,
+                identifierType,
+                identifierValue,
+                entityId,
+                cancellationToken);
+            return Ok(listIds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find lists containing item");
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new { message = "Unable to look up list membership." });
         }
     }
 

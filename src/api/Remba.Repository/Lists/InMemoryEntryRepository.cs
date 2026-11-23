@@ -56,6 +56,39 @@ public class InMemoryEntryRepository : IEntryRepository
         return Task.FromResult(Clone(match));
     }
 
+    public Task<IReadOnlyList<string>> FindActiveListIdsContainingAsync(
+        string ownerId,
+        string? identifierType,
+        string? identifierValue,
+        string? entityId,
+        CancellationToken cancellationToken = default)
+    {
+        var hasIdentifier = !string.IsNullOrWhiteSpace(identifierType) && !string.IsNullOrWhiteSpace(identifierValue);
+        var hasEntityId = !string.IsNullOrWhiteSpace(entityId);
+        if (StringUtilities.IsNullOrWhiteSpace(ownerId) || (!hasIdentifier && !hasEntityId))
+        {
+            return Task.FromResult<IReadOnlyList<string>>([]);
+        }
+
+        var listIds = _entries.Values
+            .Where(entry =>
+                string.Equals(entry.OwnerId, ownerId, StringComparison.Ordinal)
+                && entry.RecordType == ListRecordTypes.Entry
+                && entry.Deleted is null
+                && (
+                    (hasEntityId && string.Equals(entry.EntityId, entityId, StringComparison.Ordinal))
+                    || (hasIdentifier
+                        && string.Equals(entry.IdentifierType, identifierType, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(entry.IdentifierValue, identifierValue, StringComparison.OrdinalIgnoreCase))
+                ))
+            .Select(entry => entry.ListId)
+            .Where(listId => !string.IsNullOrWhiteSpace(listId))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(listIds);
+    }
+
     public Task<int> GetNextOrderAsync(string ownerId, string listId, CancellationToken cancellationToken = default)
     {
         var max = _entries.Values

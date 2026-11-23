@@ -24,6 +24,9 @@ declare global {
 
 type EmbedMode = 'identifier' | 'json' | 'manual';
 
+/** Bump when embed script behaviour/markup changes so browsers fetch a fresh copy. */
+const EMBED_SCRIPT_VERSION = '11';
+
 @Component({
   selector: 'app-developer',
   imports: [NgStyle, ReactiveFormsModule, MaterialModule, PageTemplateComponent],
@@ -34,6 +37,7 @@ export class DeveloperComponent implements OnDestroy {
   private readonly formBuilder = inject(FormBuilder);
   private readonly previewHost = viewChild<ElementRef<HTMLElement>>('previewHost');
   private remountTimer: number | null = null;
+  private embedReady: Promise<void> | null = null;
 
   readonly configForm = this.formBuilder.nonNullable.group({
     theme: ['light'],
@@ -92,22 +96,38 @@ export class DeveloperComponent implements OnDestroy {
     this.remountTimer = window.setTimeout(() => this.remountPreview(), 80);
   }
 
-  private ensureEmbedScript(): void {
-    if (document.getElementById('remba-embed-script')) {
-      return;
+  private embedScriptUrl(): string {
+    return `/embed/remba.js?v=${EMBED_SCRIPT_VERSION}`;
+  }
+
+  private ensureEmbedScript(): Promise<void> {
+    if (this.embedReady) {
+      return this.embedReady;
     }
 
-    const script = document.createElement('script');
-    script.id = 'remba-embed-script';
-    script.src = '/embed/remba.js';
-    script.async = true;
-    script.setAttribute('data-api-url', environment.apiBaseUrl);
-    script.setAttribute('data-app-url', window.location.origin);
-    script.setAttribute('data-auth0-domain', environment.auth0.domain);
-    script.setAttribute('data-auth0-client-id', environment.auth0.clientId);
-    script.setAttribute('data-auth0-audience', environment.auth0.audience);
-    script.setAttribute('data-theme', 'light');
-    document.body.appendChild(script);
+    this.embedReady = new Promise<void>((resolve, reject) => {
+      const existing = document.getElementById('remba-embed-script');
+      if (existing) {
+        existing.remove();
+        delete window.RembaSave;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'remba-embed-script';
+      script.src = this.embedScriptUrl();
+      script.async = true;
+      script.setAttribute('data-api-url', environment.apiBaseUrl);
+      script.setAttribute('data-app-url', window.location.origin);
+      script.setAttribute('data-auth0-domain', environment.auth0.domain);
+      script.setAttribute('data-auth0-client-id', environment.auth0.clientId);
+      script.setAttribute('data-auth0-audience', environment.auth0.audience);
+      script.setAttribute('data-theme', 'light');
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load remba.js'));
+      document.body.appendChild(script);
+    });
+
+    return this.embedReady;
   }
 
   private remountPreview(): void {
@@ -120,52 +140,53 @@ export class DeveloperComponent implements OnDestroy {
       return;
     }
 
-    const waitForSdk = () => {
-      if (!window.RembaSave) {
-        window.setTimeout(waitForSdk, 40);
-        return;
-      }
-
-      host.replaceChildren();
-      const mount = document.createElement('div');
-      mount.setAttribute('data-remba-save', '');
-
-      if (value.theme === 'custom') {
-        mount.setAttribute('data-color', value.color);
-        mount.setAttribute('data-background', value.background);
-        if (value.useOptionalColors) {
-          mount.setAttribute('data-border', value.border);
-          mount.setAttribute('data-muted', value.muted);
+    void this.ensureEmbedScript()
+      .then(() => {
+        if (!window.RembaSave) {
+          throw new Error('RembaSave SDK missing after script load');
         }
-      } else {
-        mount.setAttribute('data-theme', value.theme);
-      }
 
-      if (value.mode === 'json') {
-        mount.setAttribute('data-item', this.buildJsonExample(value));
-      } else if (value.mode === 'identifier') {
-        if (value.entityType) mount.setAttribute('data-entity-type', value.entityType);
-        if (value.id) mount.setAttribute('data-id', value.id);
-        if (value.idType) mount.setAttribute('data-id-type', value.idType);
-        if (value.name) mount.setAttribute('data-name', value.name);
-        if (value.author) mount.setAttribute('data-author', value.author);
-        if (value.link) mount.setAttribute('data-link', value.link);
-      } else {
-        if (value.name) mount.setAttribute('data-name', value.name);
-        if (value.author) mount.setAttribute('data-author', value.author);
-        if (value.link) mount.setAttribute('data-link', value.link);
-      }
+        host.replaceChildren();
+        const mount = document.createElement('div');
+        mount.setAttribute('data-remba-save', '');
 
-      host.appendChild(mount);
-      window.RembaSave!.mount(mount, { force: true });
-    };
+        if (value.theme === 'custom') {
+          mount.setAttribute('data-color', value.color);
+          mount.setAttribute('data-background', value.background);
+          if (value.useOptionalColors) {
+            mount.setAttribute('data-border', value.border);
+            mount.setAttribute('data-muted', value.muted);
+          }
+        } else {
+          mount.setAttribute('data-theme', value.theme);
+        }
 
-    waitForSdk();
+        if (value.mode === 'json') {
+          mount.setAttribute('data-item', this.buildJsonExample(value));
+        } else if (value.mode === 'identifier') {
+          if (value.entityType) mount.setAttribute('data-entity-type', value.entityType);
+          if (value.id) mount.setAttribute('data-id', value.id);
+          if (value.idType) mount.setAttribute('data-id-type', value.idType);
+          if (value.name) mount.setAttribute('data-name', value.name);
+          if (value.author) mount.setAttribute('data-author', value.author);
+          if (value.link) mount.setAttribute('data-link', value.link);
+        } else {
+          if (value.name) mount.setAttribute('data-name', value.name);
+          if (value.author) mount.setAttribute('data-author', value.author);
+          if (value.link) mount.setAttribute('data-link', value.link);
+        }
+
+        host.appendChild(mount);
+        window.RembaSave.mount(mount, { force: true });
+      })
+      .catch(() => {
+        // Preview stays empty if the embed script fails to load.
+      });
   }
 
   private buildSnippet(value: ReturnType<DeveloperComponent['configForm']['getRawValue']>): string {
     const attrs = [
-      `src="${window.location.origin}/embed/remba.js"`,
+      `src="${window.location.origin}/embed/remba.js?v=${EMBED_SCRIPT_VERSION}"`,
       `data-app-url="${window.location.origin}"`,
       `data-api-url="${environment.apiBaseUrl}"`,
     ];

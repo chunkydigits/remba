@@ -483,6 +483,25 @@ public class EntryService : IEntryService
             ownerId);
     }
 
+    public Task<IReadOnlyList<string>> GetListIdsContainingAsync(
+        string ownerId,
+        string? identifierType,
+        string? identifierValue,
+        string? entityId,
+        CancellationToken cancellationToken = default)
+    {
+        var type = StringUtilities.NormalizeWhitespace(identifierType);
+        var value = StringUtilities.NormalizeWhitespace(identifierValue);
+        var resolvedEntityId = StringUtilities.NormalizeWhitespace(entityId);
+
+        return _entryRepository.FindActiveListIdsContainingAsync(
+            ownerId,
+            string.IsNullOrEmpty(type) ? null : type,
+            string.IsNullOrEmpty(value) ? null : value,
+            string.IsNullOrEmpty(resolvedEntityId) ? null : resolvedEntityId,
+            cancellationToken);
+    }
+
     private async Task<EnrichmentFields> ResolveEnrichmentAsync(
         ListDbo list,
         CreateEntryRequest request,

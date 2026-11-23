@@ -40,4 +40,11 @@ public interface IEntryService
         string listId,
         string entryId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<string>> GetListIdsContainingAsync(
+        string ownerId,
+        string? identifierType,
+        string? identifierValue,
+        string? entityId,
+        CancellationToken cancellationToken = default);
 }

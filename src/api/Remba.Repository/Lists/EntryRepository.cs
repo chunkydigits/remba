@@ -139,6 +139,65 @@ public class EntryRepository : IEntryRepository
         return null;
     }
 
+    public async Task<IReadOnlyList<string>> FindActiveListIdsContainingAsync(
+        string ownerId,
+        string? identifierType,
+        string? identifierValue,
+        string? entityId,
+        CancellationToken cancellationToken = default)
+    {
+        var hasIdentifier = !string.IsNullOrWhiteSpace(identifierType) && !string.IsNullOrWhiteSpace(identifierValue);
+        var hasEntityId = !string.IsNullOrWhiteSpace(entityId);
+        if (StringUtilities.IsNullOrWhiteSpace(ownerId) || (!hasIdentifier && !hasEntityId))
+        {
+            return [];
+        }
+
+        // Prefer identifier match; also accept entity id when the catalog entity is already known.
+        const string queryText = """
+            SELECT VALUE c.listId FROM c
+            WHERE c.ownerId = @ownerId
+              AND c.recordType = @recordType
+              AND (NOT IS_DEFINED(c.deleted) OR IS_NULL(c.deleted))
+              AND (
+                (@hasEntityId AND c.entityId = @entityId)
+                OR (
+                  @hasIdentifier
+                  AND STRINGEQUALS(c.identifierType, @identifierType, true)
+                  AND STRINGEQUALS(c.identifierValue, @identifierValue, true)
+                )
+              )
+            """;
+
+        var query = new QueryDefinition(queryText)
+            .WithParameter("@ownerId", ownerId)
+            .WithParameter("@recordType", ListRecordTypes.Entry)
+            .WithParameter("@hasEntityId", hasEntityId)
+            .WithParameter("@entityId", entityId ?? string.Empty)
+            .WithParameter("@hasIdentifier", hasIdentifier)
+            .WithParameter("@identifierType", identifierType ?? string.Empty)
+            .WithParameter("@identifierValue", identifierValue ?? string.Empty);
+
+        var results = new HashSet<string>(StringComparer.Ordinal);
+        using var iterator = _container.GetItemQueryIterator<string>(
+            query,
+            requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(ownerId) });
+
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var listId in page.Resource)
+            {
+                if (!string.IsNullOrWhiteSpace(listId))
+                {
+                    results.Add(listId);
+                }
+            }
+        }
+
+        return results.ToList();
+    }
+
     public async Task<int> GetNextOrderAsync(string ownerId, string listId, CancellationToken cancellationToken = default)
     {
         const string queryText = """
