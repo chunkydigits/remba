@@ -75,6 +75,36 @@
 {{ '}' }}</pre>
   </section>
 
+  <section class="developer__section">
+    <h2>Corner expand playground</h2>
+    <p>
+      Four anchors in one frame — open each to see the circle morph into the panel toward free
+      space (top-left expands down-right, top-right down-left, and so on).
+    </p>
+    <div class="developer__playground" [ngStyle]="previewBackdropStyle" #playgroundHost>
+      <span class="developer__playground-label developer__playground-label--tl">Top left</span>
+      <span class="developer__playground-label developer__playground-label--tr">Top right</span>
+      <span class="developer__playground-label developer__playground-label--bl">Bottom left</span>
+      <span class="developer__playground-label developer__playground-label--br">Bottom right</span>
+      <div
+        class="developer__playground-anchor developer__playground-anchor--tl"
+        data-corner="tl"
+      ></div>
+      <div
+        class="developer__playground-anchor developer__playground-anchor--tr"
+        data-corner="tr"
+      ></div>
+      <div
+        class="developer__playground-anchor developer__playground-anchor--bl"
+        data-corner="bl"
+      ></div>
+      <div
+        class="developer__playground-anchor developer__playground-anchor--br"
+        data-corner="br"
+      ></div>
+    </div>
+  </section>
+
   <div class="developer__layout" [formGroup]="configForm">
     <section class="developer__section">
       <h2>Live preview</h2>

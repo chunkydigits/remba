@@ -25,7 +25,7 @@ declare global {
 type EmbedMode = 'identifier' | 'json' | 'manual';
 
 /** Bump when embed script behaviour/markup changes so browsers fetch a fresh copy. */
-const EMBED_SCRIPT_VERSION = '11';
+const EMBED_SCRIPT_VERSION = '16';
 
 @Component({
   selector: 'app-developer',
@@ -36,6 +36,7 @@ const EMBED_SCRIPT_VERSION = '11';
 export class DeveloperComponent implements OnDestroy {
   private readonly formBuilder = inject(FormBuilder);
   private readonly previewHost = viewChild<ElementRef<HTMLElement>>('previewHost');
+  private readonly playgroundHost = viewChild<ElementRef<HTMLElement>>('playgroundHost');
   private remountTimer: number | null = null;
   private embedReady: Promise<void> | null = null;
 
@@ -71,9 +72,24 @@ export class DeveloperComponent implements OnDestroy {
     if (this.remountTimer != null) {
       window.clearTimeout(this.remountTimer);
     }
-    const host = this.previewHost()?.nativeElement?.querySelector('[data-remba-save]');
-    if (host && window.RembaSave) {
-      window.RembaSave.unmount(host as HTMLElement);
+    this.unmountAllEmbeds();
+  }
+
+  private unmountAllEmbeds(): void {
+    if (!window.RembaSave) {
+      return;
+    }
+    const hosts = [
+      this.previewHost()?.nativeElement,
+      this.playgroundHost()?.nativeElement,
+    ];
+    for (const host of hosts) {
+      if (!host) {
+        continue;
+      }
+      host.querySelectorAll('[data-remba-save]').forEach((node) => {
+        window.RembaSave?.unmount(node as HTMLElement);
+      });
     }
   }
 
@@ -136,7 +152,8 @@ export class DeveloperComponent implements OnDestroy {
     this.snippet = this.buildSnippet(value);
 
     const host = this.previewHost()?.nativeElement;
-    if (!host) {
+    const playground = this.playgroundHost()?.nativeElement;
+    if (!host && !playground) {
       return;
     }
 
@@ -146,42 +163,64 @@ export class DeveloperComponent implements OnDestroy {
           throw new Error('RembaSave SDK missing after script load');
         }
 
-        host.replaceChildren();
-        const mount = document.createElement('div');
-        mount.setAttribute('data-remba-save', '');
-
-        if (value.theme === 'custom') {
-          mount.setAttribute('data-color', value.color);
-          mount.setAttribute('data-background', value.background);
-          if (value.useOptionalColors) {
-            mount.setAttribute('data-border', value.border);
-            mount.setAttribute('data-muted', value.muted);
-          }
-        } else {
-          mount.setAttribute('data-theme', value.theme);
+        if (host) {
+          host.replaceChildren();
+          const mount = this.createEmbedMount(value);
+          host.appendChild(mount);
+          window.RembaSave.mount(mount, { force: true });
         }
 
-        if (value.mode === 'json') {
-          mount.setAttribute('data-item', this.buildJsonExample(value));
-        } else if (value.mode === 'identifier') {
-          if (value.entityType) mount.setAttribute('data-entity-type', value.entityType);
-          if (value.id) mount.setAttribute('data-id', value.id);
-          if (value.idType) mount.setAttribute('data-id-type', value.idType);
-          if (value.name) mount.setAttribute('data-name', value.name);
-          if (value.author) mount.setAttribute('data-author', value.author);
-          if (value.link) mount.setAttribute('data-link', value.link);
-        } else {
-          if (value.name) mount.setAttribute('data-name', value.name);
-          if (value.author) mount.setAttribute('data-author', value.author);
-          if (value.link) mount.setAttribute('data-link', value.link);
-        }
+        if (playground) {
+          playground.querySelectorAll('[data-remba-save]').forEach((node) => {
+            window.RembaSave?.unmount(node as HTMLElement);
+            node.remove();
+          });
 
-        host.appendChild(mount);
-        window.RembaSave.mount(mount, { force: true });
+          playground.querySelectorAll<HTMLElement>('[data-corner]').forEach((wrap) => {
+            const mount = this.createEmbedMount(value);
+            wrap.replaceChildren(mount);
+            window.RembaSave?.mount(mount, { force: true });
+          });
+        }
       })
       .catch(() => {
         // Preview stays empty if the embed script fails to load.
       });
+  }
+
+  private createEmbedMount(
+    value: ReturnType<DeveloperComponent['configForm']['getRawValue']>,
+  ): HTMLElement {
+    const mount = document.createElement('div');
+    mount.setAttribute('data-remba-save', '');
+
+    if (value.theme === 'custom') {
+      mount.setAttribute('data-color', value.color);
+      mount.setAttribute('data-background', value.background);
+      if (value.useOptionalColors) {
+        mount.setAttribute('data-border', value.border);
+        mount.setAttribute('data-muted', value.muted);
+      }
+    } else {
+      mount.setAttribute('data-theme', value.theme);
+    }
+
+    if (value.mode === 'json') {
+      mount.setAttribute('data-item', this.buildJsonExample(value));
+    } else if (value.mode === 'identifier') {
+      if (value.entityType) mount.setAttribute('data-entity-type', value.entityType);
+      if (value.id) mount.setAttribute('data-id', value.id);
+      if (value.idType) mount.setAttribute('data-id-type', value.idType);
+      if (value.name) mount.setAttribute('data-name', value.name);
+      if (value.author) mount.setAttribute('data-author', value.author);
+      if (value.link) mount.setAttribute('data-link', value.link);
+    } else {
+      if (value.name) mount.setAttribute('data-name', value.name);
+      if (value.author) mount.setAttribute('data-author', value.author);
+      if (value.link) mount.setAttribute('data-link', value.link);
+    }
+
+    return mount;
   }
 
   private buildSnippet(value: ReturnType<DeveloperComponent['configForm']['getRawValue']>): string {

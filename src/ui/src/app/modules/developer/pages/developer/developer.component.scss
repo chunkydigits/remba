@@ -47,6 +47,73 @@
   }
 }
 
+.developer__playground {
+  position: relative;
+  width: 100%;
+  min-height: 36rem;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px dashed color-mix(in srgb, var(--mat-sys-outline-variant) 80%, transparent);
+  border-radius: 0.85rem;
+  background: var(--preview-bg, #fff);
+  color: var(--preview-fg, #111);
+  overflow: visible;
+}
+
+.developer__playground-label {
+  position: absolute;
+  font: var(--mat-sys-label-small);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.developer__playground-label--tl {
+  top: 1.25rem;
+  left: 4.25rem;
+}
+
+.developer__playground-label--tr {
+  top: 1.25rem;
+  right: 4.25rem;
+}
+
+.developer__playground-label--bl {
+  bottom: 1.25rem;
+  left: 4.25rem;
+}
+
+.developer__playground-label--br {
+  bottom: 1.25rem;
+  right: 4.25rem;
+}
+
+.developer__playground-anchor {
+  position: absolute;
+  z-index: 0;
+}
+
+.developer__playground-anchor--tl {
+  top: 1.25rem;
+  left: 1.25rem;
+}
+
+.developer__playground-anchor--tr {
+  top: 1.25rem;
+  right: 1.25rem;
+}
+
+.developer__playground-anchor--bl {
+  bottom: 1.25rem;
+  left: 1.25rem;
+}
+
+.developer__playground-anchor--br {
+  bottom: 1.25rem;
+  right: 1.25rem;
+}
+
 .developer__preview {
   min-height: 12rem;
   padding: 1.1rem;

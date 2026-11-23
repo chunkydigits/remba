@@ -1,10 +1,13 @@
 (function (global) {
   'use strict';
 
-  var STYLE_ID = 'remba-save-styles-v10';
+  var STYLE_ID = 'remba-save-styles-v15';
   var ATTR = 'data-remba-save';
   var CHEVRON_DOWN = '▾';
   var CHEVRON_UP = '▴';
+  var MORPH_MS = 420;
+  var BRAND_ACCENT = '#2ec4b6';
+  var shellStack = 20;
   var tokenCache = null;
 
   var LIST_TYPES = [
@@ -130,7 +133,7 @@
       muted: muted,
       hover: mixHover(color, background),
       danger: base.danger,
-      // Match panel theme so the word-icon asset stays visible.
+      // Closed circle and open panel share the same surface colours.
       buttonColor: color,
       buttonBackground: background,
     };
@@ -154,24 +157,29 @@
     return (r * 299 + g * 587 + b * 114) / 1000 < 140;
   }
 
-  function usesDarkSurface(theme, background) {
-    return theme.name === 'dark'
-      || (theme.name === 'custom' && isDarkColor(background || theme.background));
-  }
-
-  function markIconSrc(appUrl, theme) {
-    // Same assets as the app header: *-dark is the light artwork for dark surfaces.
-    var file = usesDarkSurface(theme, theme.buttonBackground)
+  function markIconSrcForBackground(appUrl, background) {
+    // *-dark is the light artwork for dark surfaces.
+    var file = isDarkColor(background)
       ? 'word-icon-transparent-dark.png'
       : 'word-icon-transparent.png';
     return String(appUrl || '').replace(/\/$/, '') + '/assets/images/' + file;
   }
 
-  function fullLogoSrc(appUrl, theme) {
-    var file = usesDarkSurface(theme, theme.background)
-      ? 'logo-transparent-dark.png'
-      : 'logo-transparent-light.png';
-    return String(appUrl || '').replace(/\/$/, '') + '/assets/images/' + file;
+  function markIconSrc(appUrl, theme) {
+    return markIconSrcForBackground(appUrl, theme.buttonBackground);
+  }
+
+  function syncMark(root, theme, open) {
+    var img = root.querySelector('.remba-mark');
+    if (!img || !theme) {
+      return;
+    }
+    var surface = open ? theme.background : theme.buttonBackground;
+    img.src = markIconSrcForBackground(root._rembaAppUrl || '', surface);
+  }
+
+  function colinerFontUrl(appUrl) {
+    return String(appUrl || '').replace(/\/$/, '') + '/assets/Coliner-Regular.ttf';
   }
 
   function mixHover(color, background) {
@@ -198,7 +206,7 @@
     root.setAttribute('data-remba-theme', theme.name);
   }
 
-  function ensureStyles() {
+  function ensureStyles(appUrl) {
     if (document.getElementById(STYLE_ID)) {
       return;
     }
@@ -206,34 +214,77 @@
     var style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = [
-      '.remba-root{position:relative;display:inline-block;max-width:100%;',
+      '@font-face{font-family:"Coliner";src:url("' + colinerFontUrl(appUrl) + '") format("truetype");',
+      'font-weight:400;font-style:normal;font-display:swap}',
+      '.remba-root{position:relative;display:inline-block;width:2.5rem;height:2.5rem;',
+      'max-width:100%;vertical-align:top;z-index:1;',
       'font:500 .9rem/1.25 system-ui,-apple-system,Segoe UI,sans-serif;',
       'color:var(--remba-color,#111);--remba-bg:#fff;--remba-border:rgba(0,0,0,.12);',
       '--remba-muted:#666;--remba-hover:rgba(0,0,0,.06);--remba-danger:#b00020;',
-      '--remba-button-color:#fff;--remba-button-bg:#111}',
-      '.remba-save-button{appearance:none;border:1px solid var(--remba-border);border-radius:999px;',
-      'width:2.5rem;height:2.5rem;padding:0;background:var(--remba-button-bg);',
-      'color:var(--remba-button-color);cursor:pointer;display:inline-grid;place-items:center;',
-      'box-shadow:0 1px 2px rgba(0,0,0,.14);line-height:0}',
-      '.remba-save-button:hover,.remba-root.is-open .remba-save-button{filter:brightness(1.08)}',
-      '.remba-save-button:focus-visible{outline:2px solid var(--remba-button-bg);outline-offset:2px}',
-      '.remba-save-button__mark{display:block;width:1.55rem;height:1.55rem;object-fit:contain}',
-      '.remba-panel{margin-top:.45rem;min-width:18.5rem;width:min(22.5rem,calc(100vw - 2rem));',
-      'min-height:9rem;padding:.85rem;border:1px solid var(--remba-border);border-radius:.85rem;',
-      'background:var(--remba-bg);color:var(--remba-color);',
-      'box-shadow:0 10px 28px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.06);position:relative;',
-      'box-sizing:border-box}',
-      '.remba-panel[hidden]{display:none!important}',
-      '.remba-panel__header{display:flex;align-items:center;justify-content:space-between;',
-      'gap:.75rem;min-height:2rem;margin:0 0 .7rem;padding:0 .05rem}',
-      '.remba-panel__brand{display:block;height:1.45rem;width:auto;max-width:100%;',
-      'object-fit:contain;object-position:left center;flex:1;min-width:0}',
-      '.remba-panel__close{appearance:none;position:relative;z-index:3;flex:0 0 auto;',
-      'width:1.85rem;height:1.85rem;padding:0;border:0;border-radius:.5rem;cursor:pointer;',
-      'display:grid;place-items:center;background:var(--remba-hover);color:var(--remba-muted);',
-      'font:600 1.2rem/1 system-ui,sans-serif}',
-      '.remba-panel__close:hover{background:var(--remba-button-bg);color:var(--remba-button-color)}',
-      '.remba-panel__close:focus-visible{outline:2px solid var(--remba-color);outline-offset:1px}',
+      '--remba-button-color:#fff;--remba-button-bg:#111;--remba-brand:' + BRAND_ACCENT + '}',
+      '.remba-root.is-open{z-index:50}',
+      '.remba-shell{position:absolute;z-index:5;box-sizing:border-box;overflow:hidden;',
+      'width:2.5rem;height:2.5rem;max-height:2.5rem;padding:0;border:1px solid var(--remba-border);',
+      'border-radius:999px;background:var(--remba-button-bg);color:var(--remba-button-color);',
+      'box-shadow:0 1px 2px rgba(0,0,0,.14);cursor:pointer;',
+      'display:flex;flex-direction:column;',
+      'transition:width ' + MORPH_MS + 'ms cubic-bezier(.2,.8,.2,1),',
+      'height ' + MORPH_MS + 'ms cubic-bezier(.2,.8,.2,1),',
+      'max-height ' + MORPH_MS + 'ms cubic-bezier(.2,.8,.2,1),',
+      'border-radius ' + MORPH_MS + 'ms cubic-bezier(.2,.8,.2,1),',
+      'padding ' + MORPH_MS + 'ms cubic-bezier(.2,.8,.2,1),',
+      'background ' + MORPH_MS + 'ms ease,color ' + MORPH_MS + 'ms ease,',
+      'box-shadow ' + MORPH_MS + 'ms ease}',
+      '.remba-shell--tl{top:0;left:0}',
+      '.remba-shell--tr{top:0;right:0}',
+      '.remba-shell--bl{bottom:0;left:0}',
+      '.remba-shell--br{bottom:0;right:0}',
+      '.remba-shell:focus-visible{outline:2px solid var(--remba-button-bg);outline-offset:2px}',
+      '.remba-shell.is-open{width:min(22.5rem,calc(100vw - 2rem));height:auto;',
+      'max-height:min(80vh,42rem);padding:.85rem;border-radius:.85rem;',
+      'background:var(--remba-bg);color:var(--remba-color);cursor:default;',
+      'box-shadow:0 10px 28px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.06)}',
+      '.remba-shell__chrome{display:flex;align-items:center;justify-content:center;',
+      'gap:0;flex:0 0 auto;width:100%;height:2.5rem;min-height:2.5rem;position:relative;',
+      'z-index:3;transition:justify-content ' + MORPH_MS + 'ms ease,height ' + MORPH_MS + 'ms ease,',
+      'min-height ' + MORPH_MS + 'ms ease,margin ' + MORPH_MS + 'ms ease,gap ' + MORPH_MS + 'ms ease}',
+      '.remba-shell.is-open .remba-shell__chrome{justify-content:space-between;gap:.55rem;',
+      'height:auto;min-height:2rem;margin:0 0 .7rem}',
+      '.remba-shell__brand{display:flex;align-items:center;justify-content:center;gap:.45rem;',
+      'min-width:0;width:100%;height:100%}',
+      '.remba-shell.is-open .remba-shell__brand{justify-content:flex-start;width:auto;flex:1;',
+      'height:auto}',
+      '.remba-mark{display:block;width:1.55rem;height:1.55rem;object-fit:contain;flex:0 0 auto;',
+      'transition:width ' + MORPH_MS + 'ms ease,height ' + MORPH_MS + 'ms ease}',
+      '.remba-shell.is-open .remba-mark{width:1.45rem;height:1.45rem}',
+      '.remba-word{font-family:Coliner,system-ui,sans-serif;font-size:1.2rem;line-height:1;',
+      'letter-spacing:.01em;white-space:nowrap;opacity:0;max-width:0;overflow:hidden;',
+      'transform:translateX(-.35rem);pointer-events:none;flex:0 0 auto;',
+      'transition:opacity .28s ease ' + Math.round(MORPH_MS * 0.25) + 'ms,',
+      'max-width .28s ease ' + Math.round(MORPH_MS * 0.2) + 'ms,',
+      'transform .28s ease ' + Math.round(MORPH_MS * 0.25) + 'ms}',
+      '.remba-shell.is-open .remba-word{opacity:1;max-width:8rem;transform:none;pointer-events:auto}',
+      '.remba-shell:not(.is-open) .remba-word{transition-delay:0s;position:absolute;width:0;height:0}',
+      '.remba-word__dot{color:var(--remba-brand)}',
+      '.remba-shell__close{appearance:none;flex:0 0 auto;width:1.85rem;height:1.85rem;padding:0;',
+      'border:0;border-radius:.5rem;cursor:pointer;display:grid;place-items:center;',
+      'background:var(--remba-hover);color:var(--remba-muted);',
+      'font:600 1.2rem/1 system-ui,sans-serif;opacity:0;pointer-events:none;transform:scale(.85);',
+      'transition:opacity .25s ease ' + Math.round(MORPH_MS * 0.35) + 'ms,transform .25s ease ',
+      Math.round(MORPH_MS * 0.35) + 'ms}',
+      '.remba-shell:not(.is-open) .remba-shell__close{position:absolute;right:0;top:50%;',
+      'width:0;height:0;margin:0;overflow:hidden;border:0;transition-delay:0s}',
+      '.remba-shell.is-open .remba-shell__close{opacity:1;pointer-events:auto;transform:none;',
+      'position:relative;right:auto;top:auto;z-index:4}',
+      '.remba-shell__close:hover{background:var(--remba-button-bg);color:var(--remba-button-color)}',
+      '.remba-shell__close:focus-visible{outline:2px solid var(--remba-color);outline-offset:1px}',
+      '.remba-shell__body{display:grid;grid-template-rows:0fr;opacity:0;flex:1;min-height:0;',
+      'transition:grid-template-rows ' + MORPH_MS + 'ms cubic-bezier(.2,.8,.2,1),',
+      'opacity .24s ease}',
+      '.remba-shell.is-open .remba-shell__body{grid-template-rows:1fr;opacity:1;',
+      'transition-delay:0s,.12s}',
+      '.remba-shell:not(.is-open) .remba-shell__body{transition-delay:0s,0s}',
+      '.remba-shell__body-inner{overflow:hidden;min-height:0}',
       '.remba-menu__item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;',
       'width:100%;border:0;border-radius:.5rem;background:transparent;color:inherit;',
       'padding:.55rem .65rem;cursor:pointer;text-align:left;font:inherit}',
@@ -277,16 +328,16 @@
       'background:var(--remba-hover)}',
       '.remba-auth[hidden]{display:none!important}',
       '.remba-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;',
-      'justify-content:center;gap:.65rem;padding:1rem;border-radius:.75rem;',
+      'justify-content:center;gap:.65rem;padding:1rem;border-radius:inherit;',
       'background:color-mix(in srgb, var(--remba-bg) 92%, transparent);color:var(--remba-muted);',
-      'font-size:.82rem;text-align:center;z-index:2}',
+      'font-size:.82rem;text-align:center;z-index:2;pointer-events:none}',
       '.remba-loading[hidden]{display:none!important}',
       '.remba-spinner{width:1.35rem;height:1.35rem;border-radius:999px;',
       'border:2px solid var(--remba-border);border-top-color:var(--remba-color);',
       'animation:remba-spin .7s linear infinite}',
       '@keyframes remba-spin{to{transform:rotate(360deg)}}',
-      '.remba-panel.is-busy .remba-menu__item,.remba-panel.is-busy .remba-submenu,',
-      '.remba-panel.is-busy .remba-divider,.remba-panel.is-busy .remba-create{visibility:hidden}',
+      '.remba-shell.is-busy .remba-menu__item,.remba-shell.is-busy .remba-submenu,',
+      '.remba-shell.is-busy .remba-divider,.remba-shell.is-busy .remba-create{visibility:hidden}',
     ].join('');
     document.head.appendChild(style);
   }
@@ -312,10 +363,94 @@
   }
 
   function setBusy(root, busy) {
-    var panel = root.querySelector('.remba-panel');
-    if (panel) {
-      panel.classList.toggle('is-busy', !!busy);
+    var shell = root.querySelector('.remba-shell');
+    if (shell) {
+      shell.classList.toggle('is-busy', !!busy);
     }
+  }
+
+  function resolveAnchor(root) {
+    var rect = root.getBoundingClientRect();
+    var midX = rect.left + rect.width / 2;
+    var midY = rect.top + rect.height / 2;
+    var openLeft = midX > window.innerWidth * 0.55;
+    var openUp = midY > window.innerHeight * 0.55;
+    if (openUp && openLeft) {
+      return 'br';
+    }
+    if (openUp) {
+      return 'bl';
+    }
+    if (openLeft) {
+      return 'tr';
+    }
+    return 'tl';
+  }
+
+  function applyShellAnchor(shell, anchor) {
+    shell.classList.remove('remba-shell--tl', 'remba-shell--tr', 'remba-shell--bl', 'remba-shell--br');
+    shell.classList.add('remba-shell--' + anchor);
+    shell.setAttribute('data-anchor', anchor);
+  }
+
+  function elevateOpenShell(root) {
+    shellStack += 1;
+    var z = String(shellStack);
+    root.style.zIndex = z;
+    var shell = root.querySelector('.remba-shell');
+    if (shell) {
+      shell.style.zIndex = z;
+    }
+    // Lift a positioned parent (e.g. playground corner wrap) so siblings cannot cover us.
+    var parent = root.parentElement;
+    if (parent && parent !== document.body && parent !== document.documentElement) {
+      var parentStyle = window.getComputedStyle(parent);
+      if (parentStyle.position !== 'static') {
+        parent.style.zIndex = z;
+        parent.setAttribute('data-remba-stack', 'true');
+      }
+    }
+  }
+
+  function clearShellElevation(root) {
+    root.style.zIndex = '';
+    var shell = root.querySelector('.remba-shell');
+    if (shell) {
+      shell.style.zIndex = '';
+    }
+    var parent = root.parentElement;
+    if (parent && parent.getAttribute('data-remba-stack') === 'true') {
+      parent.style.zIndex = '';
+      parent.removeAttribute('data-remba-stack');
+    }
+  }
+
+  function resetShellContent(root) {
+    var submenu = root.querySelector('.remba-submenu');
+    var createEl = root.querySelector('.remba-create');
+    var trigger = root.querySelector('.remba-menu__item--add');
+    var authFrame = root.querySelector('.remba-auth');
+    var statusEl = root.querySelector('.remba-status');
+
+    if (submenu) {
+      submenu.hidden = true;
+      submenu.innerHTML = '';
+    }
+    if (createEl) {
+      createEl.classList.remove('is-open');
+      createEl.innerHTML = '';
+    }
+    if (trigger) {
+      trigger.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      setExpandChevron(trigger.querySelector('.remba-menu__chevron'), false);
+    }
+    if (authFrame) {
+      authFrame.hidden = true;
+      authFrame.removeAttribute('src');
+    }
+    setLoading(root, false);
+    setStatus(statusEl, '', false);
   }
 
   function setLoading(root, loading, message) {
@@ -1044,87 +1179,120 @@
       });
   }
 
-  function collapse(root) {
-    root.classList.remove('is-open');
-    var button = root.querySelector('.remba-save-button');
-    var panel = root.querySelector('.remba-panel');
-    var submenu = root.querySelector('.remba-submenu');
-    var createEl = root.querySelector('.remba-create');
-    var trigger = root.querySelector('.remba-menu__item--add');
-    var authFrame = root.querySelector('.remba-auth');
-    var statusEl = root.querySelector('.remba-status');
+  function setShellChromeState(shell, open) {
+    if (!shell) {
+      return;
+    }
+    var closeBtn = shell.querySelector('.remba-shell__close');
+    shell.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      shell.setAttribute('role', 'dialog');
+      shell.setAttribute('aria-label', 'Remba');
+      shell.removeAttribute('tabindex');
+      if (closeBtn) {
+        closeBtn.tabIndex = 0;
+      }
+    } else {
+      shell.setAttribute('role', 'button');
+      shell.setAttribute('aria-label', 'Save to Remba');
+      shell.tabIndex = 0;
+      if (closeBtn) {
+        closeBtn.tabIndex = -1;
+      }
+    }
+  }
 
-    if (button) {
-      button.setAttribute('aria-expanded', 'false');
+  function collapse(root) {
+    var shell = root.querySelector('.remba-shell');
+    var theme = root._rembaTheme;
+    if (!root.classList.contains('is-open') || !shell) {
+      root.classList.remove('is-open');
+      if (shell) {
+        shell.classList.remove('is-open');
+        setShellChromeState(shell, false);
+      }
+      syncMark(root, theme, false);
+      clearShellElevation(root);
+      resetShellContent(root);
+      return;
     }
-    if (panel) {
-      panel.hidden = true;
+
+    if (shell._rembaClosing) {
+      return;
     }
-    if (submenu) {
-      submenu.hidden = true;
-      submenu.innerHTML = '';
+    shell._rembaClosing = true;
+    setBusy(root, false);
+    syncMark(root, theme, false);
+    setShellChromeState(shell, false);
+
+    root.classList.remove('is-open');
+    shell.classList.remove('is-open');
+
+    var finished = false;
+    function finish() {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      shell._rembaClosing = false;
+      shell.removeEventListener('transitionend', onEnd);
+      clearShellElevation(root);
+      resetShellContent(root);
     }
-    if (createEl) {
-      createEl.classList.remove('is-open');
-      createEl.innerHTML = '';
+
+    function onEnd(event) {
+      if (event.target !== shell) {
+        return;
+      }
+      if (event.propertyName && event.propertyName !== 'width' && event.propertyName !== 'max-height') {
+        return;
+      }
+      finish();
     }
-    if (trigger) {
-      trigger.classList.remove('is-open');
-      trigger.setAttribute('aria-expanded', 'false');
-      setExpandChevron(trigger.querySelector('.remba-menu__chevron'), false);
-    }
-    if (authFrame) {
-      authFrame.hidden = true;
-      authFrame.removeAttribute('src');
-    }
-    setLoading(root, false);
-    setStatus(statusEl, '', false);
+
+    shell.addEventListener('transitionend', onEnd);
+    window.setTimeout(finish, MORPH_MS + 80);
   }
 
   function expand(root, item, config) {
+    var shell = root.querySelector('.remba-shell');
+    if (!shell || shell._rembaClosing) {
+      return;
+    }
+
+    applyShellAnchor(shell, resolveAnchor(root));
     root.classList.add('is-open');
-    var button = root.querySelector('.remba-save-button');
-    var panel = root.querySelector('.remba-panel');
-    if (button) {
-      button.setAttribute('aria-expanded', 'true');
-    }
-    if (panel) {
-      panel.hidden = false;
-    }
+    elevateOpenShell(root);
+    setShellChromeState(shell, true);
+    syncMark(root, root._rembaTheme, true);
+
+    void shell.offsetWidth;
+    shell.classList.add('is-open');
     loadLists(root, item, config);
   }
 
   function markImg(appUrl, theme) {
     return (
-      '<img class="remba-save-button__mark" src="' +
+      '<img class="remba-mark" src="' +
       markIconSrc(appUrl, theme) +
       '" alt="" width="24" height="24" decoding="async" />'
     );
   }
 
-  function brandImg(appUrl, theme) {
-    return (
-      '<img class="remba-panel__brand" src="' +
-      fullLogoSrc(appUrl, theme) +
-      '" alt="Remba" decoding="async" />'
-    );
-  }
-
   function buildRootHtml(appUrl, theme) {
     return [
-      '<button type="button" class="remba-save-button" aria-label="Save to Remba" aria-haspopup="true" aria-expanded="false">',
+      '<div class="remba-shell remba-shell--tl" role="button" tabindex="0"',
+      ' aria-label="Save to Remba" aria-haspopup="dialog" aria-expanded="false">',
+      '<div class="remba-shell__chrome">',
+      '<div class="remba-shell__brand">',
       markImg(appUrl, theme),
-      '</button>',
-      '<div class="remba-panel" role="menu" aria-label="Remba" hidden>',
-      '<div class="remba-panel__header">',
-      brandImg(appUrl, theme),
-      '<button type="button" class="remba-panel__close" aria-label="Close">×</button>',
+      '<span class="remba-word" aria-hidden="true">remba<span class="remba-word__dot">.</span>it</span>',
       '</div>',
-      '<div class="remba-loading" hidden>',
-      '<span class="remba-spinner" aria-hidden="true"></span>',
-      '<span class="remba-loading__label">Loading…</span>',
+      '<button type="button" class="remba-shell__close" aria-label="Close" tabindex="-1">×</button>',
       '</div>',
-      '<button type="button" class="remba-menu__item remba-menu__item--add" role="menuitem" aria-haspopup="menu" aria-expanded="false">',
+      '<div class="remba-shell__body">',
+      '<div class="remba-shell__body-inner">',
+      '<button type="button" class="remba-menu__item remba-menu__item--add" aria-haspopup="menu" aria-expanded="false">',
       '<span>Add to List</span><span class="remba-menu__chevron" aria-hidden="true">' + CHEVRON_DOWN + '</span>',
       '</button>',
       '<div class="remba-submenu" role="menu" hidden></div>',
@@ -1132,6 +1300,12 @@
       '<div class="remba-create"></div>',
       '<iframe class="remba-auth" title="Remba sign-in" hidden></iframe>',
       '<div class="remba-status" hidden></div>',
+      '</div>',
+      '</div>',
+      '<div class="remba-loading" hidden>',
+      '<span class="remba-spinner" aria-hidden="true"></span>',
+      '<span class="remba-loading__label">Loading…</span>',
+      '</div>',
       '</div>',
     ].join('');
   }
@@ -1159,13 +1333,13 @@
       unmount(el);
     }
 
-    ensureStyles();
-
     var config = Object.assign({}, scriptConfig(), overrides.config || {});
     var localApp = readOption(el, 'app-url');
     var localApi = readOption(el, 'api-url');
     if (localApp) config.appUrl = localApp.replace(/\/$/, '');
     if (localApi) config.apiUrl = localApi.replace(/\/$/, '');
+
+    ensureStyles(config.appUrl);
 
     var item = buildItem(el, overrides);
     var theme = resolveTheme(config, el);
@@ -1173,19 +1347,22 @@
     el.classList.add('remba-root');
     el.innerHTML = buildRootHtml(config.appUrl, theme);
     applyTheme(el, theme);
+    el._rembaTheme = theme;
+    el._rembaAppUrl = config.appUrl;
     el.setAttribute('data-remba-mounted', 'true');
 
-    var button = el.querySelector('.remba-save-button');
+    var shell = el.querySelector('.remba-shell');
     var addItem = el.querySelector('.remba-menu__item--add');
-    var closeBtn = el.querySelector('.remba-panel__close');
+    var closeBtn = el.querySelector('.remba-shell__close');
 
-    button.addEventListener('click', function (event) {
-      event.preventDefault();
-      event.stopPropagation();
+    function openFromTrigger() {
       if (!itemIsReady(item)) {
-        el.querySelector('.remba-panel').hidden = false;
+        applyShellAnchor(shell, resolveAnchor(el));
         el.classList.add('is-open');
-        button.setAttribute('aria-expanded', 'true');
+        shell.classList.add('is-open');
+        elevateOpenShell(el);
+        setShellChromeState(shell, true);
+        syncMark(el, theme, true);
         setStatus(
           el.querySelector('.remba-status'),
           'Embed needs data-entity-type + data-id, data-item JSON, or data-name.',
@@ -1194,10 +1371,29 @@
         return;
       }
       if (el.classList.contains('is-open')) {
-        collapse(el);
         return;
       }
       expand(el, item, config);
+    }
+
+    shell.addEventListener('click', function (event) {
+      if (el.classList.contains('is-open')) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      openFromTrigger();
+    });
+
+    shell.addEventListener('keydown', function (event) {
+      if (el.classList.contains('is-open')) {
+        return;
+      }
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+      event.preventDefault();
+      openFromTrigger();
     });
 
     if (closeBtn) {
@@ -1212,7 +1408,7 @@
       event.preventDefault();
       event.stopPropagation();
       var submenu = el.querySelector('.remba-submenu');
-      if (!submenu.hidden && !el.querySelector('.remba-panel').classList.contains('is-busy')) {
+      if (!submenu.hidden && !shell.classList.contains('is-busy')) {
         submenu.hidden = true;
         addItem.classList.remove('is-open');
         addItem.setAttribute('aria-expanded', 'false');
