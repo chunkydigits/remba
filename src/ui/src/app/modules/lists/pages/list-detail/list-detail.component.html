@@ -161,6 +161,15 @@
     }
 
     <section class="list-detail">
+      @if (list.referralLink) {
+        <p class="list-detail__referral">
+          Inspired by
+          <a [href]="list.referralLink" target="_blank" rel="noopener noreferrer">{{
+            list.referralLink
+          }}</a>
+        </p>
+      }
+
       @if (visibleFields$ | async; as visibleFields) {
         @if (entries$ | async; as entries) {
           @if (entries.length === 0) {
@@ -183,15 +192,44 @@
                     <span class="list-detail__entry-name">{{ entry.name }}</span>
                     @for (field of visibleFields; track field) {
                       @if (field !== 'name' && field !== 'link' && field !== 'read' && field !== 'visited' && field !== 'seen') {
-                        @if (entryFieldValue(entry, field); as value) {
-                          @if (value) {
-                            <span class="list-detail__entry-line">{{ value }}</span>
+                        @if (isBuiltInField(field)) {
+                          @if (entryFieldValue(entry, field); as value) {
+                            @if (value) {
+                              <span class="list-detail__entry-line">{{ value }}</span>
+                            }
                           }
+                        } @else if (customFieldLine(entry, field, list.attributes); as line) {
+                          <div class="list-detail__entry-line">
+                            <span class="list-detail__entry-line-label">{{ line.label }}</span>
+                            @if (line.chips.length > 0) {
+                              <span class="list-detail__chips">
+                                @for (chip of line.chips; track chip) {
+                                  <span class="list-detail__chip">{{ chip }}</span>
+                                }
+                              </span>
+                            } @else {
+                              <span>{{ line.value }}</span>
+                            }
+                          </div>
                         }
                       }
                     }
                     @if (entry.seen && entry.seenAt) {
                       <span class="list-detail__entry-line">Seen {{ formatSeenAt(entry.seenAt) }}</span>
+                    }
+                    @for (line of customAttributeLines(entry, list.attributes, visibleFields); track line.label) {
+                      <div class="list-detail__entry-line">
+                        <span class="list-detail__entry-line-label">{{ line.label }}</span>
+                        @if (line.chips.length > 0) {
+                          <span class="list-detail__chips">
+                            @for (chip of line.chips; track chip) {
+                              <span class="list-detail__chip">{{ chip }}</span>
+                            }
+                          </span>
+                        } @else {
+                          <span>{{ line.value }}</span>
+                        }
+                      </div>
                     }
                   </div>
                 </a>
@@ -230,10 +268,25 @@
 
                       @for (field of visibleFields; track field) {
                         @if (field !== 'name' && field !== 'link' && field !== 'read' && field !== 'visited' && field !== 'seen') {
-                          @if (entryFieldValue(entry, field); as value) {
-                            @if (value) {
-                              <span class="list-detail__entry-line">{{ value }}</span>
+                          @if (isBuiltInField(field)) {
+                            @if (entryFieldValue(entry, field); as value) {
+                              @if (value) {
+                                <span class="list-detail__entry-line">{{ value }}</span>
+                              }
                             }
+                          } @else if (customFieldLine(entry, field, list.attributes); as line) {
+                            <div class="list-detail__entry-line">
+                              <span class="list-detail__entry-line-label">{{ line.label }}</span>
+                              @if (line.chips.length > 0) {
+                                <span class="list-detail__chips">
+                                  @for (chip of line.chips; track chip) {
+                                    <span class="list-detail__chip">{{ chip }}</span>
+                                  }
+                                </span>
+                              } @else {
+                                <span>{{ line.value }}</span>
+                              }
+                            </div>
                           }
                         }
                       }
@@ -244,6 +297,21 @@
 
                       @if (entry.seen && entry.seenAt) {
                         <span class="list-detail__entry-line">Seen {{ formatSeenAt(entry.seenAt) }}</span>
+                      }
+
+                      @for (line of customAttributeLines(entry, list.attributes, visibleFields); track line.label) {
+                        <div class="list-detail__entry-line">
+                          <span class="list-detail__entry-line-label">{{ line.label }}</span>
+                          @if (line.chips.length > 0) {
+                            <span class="list-detail__chips">
+                              @for (chip of line.chips; track chip) {
+                                <span class="list-detail__chip">{{ chip }}</span>
+                              }
+                            </span>
+                          } @else {
+                            <span>{{ line.value }}</span>
+                          }
+                        </div>
                       }
                     </span>
                   </a>

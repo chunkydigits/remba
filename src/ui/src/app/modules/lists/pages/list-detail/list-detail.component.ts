@@ -25,6 +25,7 @@ import { ListSettingsComponent } from '../../components/list-settings/list-setti
 import { ListService } from '../../services/list.service';
 import { EntryService } from '../../services/entry.service';
 import {
+  ListAttributeDefinition,
   ListDetail,
   ListFieldKey,
   UpdateListRequest,
@@ -33,6 +34,12 @@ import {
   defaultVisibleFields,
 } from '../../models/list.model';
 import { EntryListQuery, ListEntry } from '../../models/entry.model';
+import {
+  findAttributeDefinition,
+  formatAttributeValue,
+  normaliseAttributeType,
+  parseListItems,
+} from '../../utils/entry-attributes.util';
 
 type ToolbarMode = 'closed' | 'menu' | 'search' | 'filter' | 'sort' | 'settings';
 
@@ -147,12 +154,37 @@ export class ListDetailComponent {
   readonly visibleFields$: Observable<ListFieldKey[]> = this.list$.pipe(
     map((list) => {
       const saved = list?.viewSettings.visibleFields?.filter(Boolean) as ListFieldKey[] | undefined;
+      const customKeys = (list?.attributes || [])
+        .map((attribute) => attribute.key?.trim())
+        .filter((key): key is string => !!key) as ListFieldKey[];
+
       if (saved && saved.length > 0) {
-        return saved.includes('name') ? saved : (['name', ...saved] as ListFieldKey[]);
+        const withName = saved.includes('name') ? [...saved] : (['name', ...saved] as ListFieldKey[]);
+        for (const key of customKeys) {
+          if (!withName.includes(key)) {
+            withName.push(key);
+          }
+        }
+        return withName;
       }
-      return defaultVisibleFields(list?.entityType);
+
+      return [...defaultVisibleFields(list?.entityType), ...customKeys];
     }),
   );
+
+  private static readonly builtInFields = new Set<string>([
+    'name',
+    'author',
+    'director',
+    'actors',
+    'genre',
+    'themes',
+    'link',
+    'read',
+    'visited',
+    'seen',
+    'added',
+  ]);
 
   readonly sortFields$ = this.entityType$.pipe(
     map((type) => {
@@ -446,6 +478,90 @@ export class ListDetailComponent {
 
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  }
+
+  isBuiltInField(field: string): boolean {
+    return ListDetailComponent.builtInFields.has(field);
+  }
+
+  customFieldLine(
+    entry: ListEntry,
+    field: string,
+    definitions: ListAttributeDefinition[] | null | undefined,
+  ): { label: string; value: string; chips: string[] } | null {
+    const definition = findAttributeDefinition(definitions, field);
+    if (!definition) {
+      return null;
+    }
+
+    return this.toCustomAttributeLine(definition, entry.attributes || {}, true);
+  }
+
+  customAttributeLines(
+    entry: ListEntry,
+    definitions: ListAttributeDefinition[] | null | undefined,
+    visibleFields?: ListFieldKey[] | null,
+  ): Array<{ label: string; value: string; chips: string[] }> {
+    if (!definitions?.length) {
+      return [];
+    }
+
+    const visibleCustom = new Set(
+      (visibleFields || [])
+        .filter((field) => !this.isBuiltInField(field))
+        .map((field) => field.toLowerCase()),
+    );
+
+    const lines: Array<{ label: string; value: string; chips: string[] }> = [];
+    for (const definition of definitions) {
+      const key = definition.key?.trim().toLowerCase();
+      if (!key) {
+        continue;
+      }
+
+      // Prefer the visible-fields loop for configured custom columns.
+      if (visibleCustom.has(key)) {
+        continue;
+      }
+
+      const line = this.toCustomAttributeLine(definition, entry.attributes || {}, false);
+      if (line) {
+        lines.push(line);
+      }
+    }
+
+    return lines;
+  }
+
+  private toCustomAttributeLine(
+    definition: ListAttributeDefinition,
+    values: Record<string, unknown>,
+    includeFalseBoolean: boolean,
+  ): { label: string; value: string; chips: string[] } | null {
+    const key = definition.key?.trim();
+    if (!key) {
+      return null;
+    }
+
+    if (normaliseAttributeType(definition.type) === 'list') {
+      const chips = parseListItems(values[key]);
+      if (chips.length === 0) {
+        return null;
+      }
+
+      return {
+        label: definition.name,
+        value: chips.join(', '),
+        chips,
+      };
+    }
+
+    const value = formatAttributeValue(definition, values, { includeFalseBoolean });
+    if (!value) {
+      return null;
+    }
+
+    return { label: definition.name, value, chips: [] };
   }
 
   onDrop(event: CdkDragDrop<ListEntry[]>): void {

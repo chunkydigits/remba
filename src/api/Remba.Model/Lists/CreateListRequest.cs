@@ -11,6 +11,9 @@ public class CreateListRequest
     [MaxLength(1000)]
     public string? Description { get; set; }
 
+    [MaxLength(2000)]
+    public string? ReferralLink { get; set; }
+
     [MaxLength(40)]
     public string? EntityType { get; set; }
 
@@ -25,6 +28,12 @@ public class UpdateListRequest
 
     [MaxLength(1000)]
     public string? Description { get; set; }
+
+    /// <summary>
+    /// When provided, replaces the collection referral link. Empty string clears it.
+    /// </summary>
+    [MaxLength(2000)]
+    public string? ReferralLink { get; set; }
 
     [MaxLength(40)]
     public string? EntityType { get; set; }

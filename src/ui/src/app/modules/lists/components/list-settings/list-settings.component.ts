@@ -37,6 +37,7 @@ export class ListSettingsComponent implements OnChanges {
   readonly detailsForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
     description: ['', [Validators.maxLength(1000)]],
+    referralLink: ['', [Validators.maxLength(2000)]],
     entityType: ['', [Validators.maxLength(40)]],
     visibility: ['private', Validators.required],
   });
@@ -62,6 +63,7 @@ export class ListSettingsComponent implements OnChanges {
     this.detailsForm.patchValue({
       name: this.list.name,
       description: this.list.description,
+      referralLink: this.list.referralLink || '',
       entityType: this.list.entityType || '',
       visibility: this.list.visibility || 'private',
     });
@@ -78,25 +80,35 @@ export class ListSettingsComponent implements OnChanges {
   }
 
   availableFields() {
-    return availableFieldsForEntityType(this.detailsForm.controls.entityType.value || this.list.entityType);
+    const builtIn = availableFieldsForEntityType(
+      this.detailsForm.controls.entityType.value || this.list.entityType,
+    );
+    const custom = this.customProperties
+      .filter((property) => !!property.key?.trim())
+      .map((property) => ({
+        key: property.key as ListFieldKey,
+        label: property.name,
+      }));
+    return [...builtIn, ...custom];
   }
 
-  isFieldVisible(key: ListFieldKey): boolean {
-    return this.visibleFieldKeys.includes(key);
+  isFieldVisible(key: ListFieldKey | string): boolean {
+    return this.visibleFieldKeys.includes(key as ListFieldKey);
   }
 
-  onToggleField(key: ListFieldKey, checked: boolean): void {
+  onToggleField(key: ListFieldKey | string, checked: boolean): void {
     if (key === 'name') {
       return;
     }
 
-    if (checked && !this.visibleFieldKeys.includes(key)) {
-      this.visibleFieldKeys = [...this.visibleFieldKeys, key];
+    const typedKey = key as ListFieldKey;
+    if (checked && !this.visibleFieldKeys.includes(typedKey)) {
+      this.visibleFieldKeys = [...this.visibleFieldKeys, typedKey];
       return;
     }
 
     if (!checked) {
-      this.visibleFieldKeys = this.visibleFieldKeys.filter((field) => field !== key);
+      this.visibleFieldKeys = this.visibleFieldKeys.filter((field) => field !== typedKey);
     }
   }
 
@@ -134,6 +146,10 @@ export class ListSettingsComponent implements OnChanges {
       },
     ];
 
+    if (!this.visibleFieldKeys.includes(key as ListFieldKey)) {
+      this.visibleFieldKeys = [...this.visibleFieldKeys, key as ListFieldKey];
+    }
+
     this.propertyForm.reset({
       name: '',
       description: '',
@@ -143,6 +159,7 @@ export class ListSettingsComponent implements OnChanges {
 
   onRemoveProperty(key: string): void {
     this.customProperties = this.customProperties.filter((property) => property.key !== key);
+    this.visibleFieldKeys = this.visibleFieldKeys.filter((field) => field !== key);
   }
 
   onSaveDetails(): void {
@@ -152,9 +169,16 @@ export class ListSettingsComponent implements OnChanges {
     }
 
     const value = this.detailsForm.getRawValue();
+    for (const property of this.customProperties) {
+      if (property.key && !this.visibleFieldKeys.includes(property.key as ListFieldKey)) {
+        this.visibleFieldKeys = [...this.visibleFieldKeys, property.key as ListFieldKey];
+      }
+    }
+
     this.saveDetails.emit({
       name: value.name,
       description: value.description,
+      referralLink: value.referralLink.trim(),
       entityType: value.entityType || undefined,
       visibility: value.visibility,
       attributes: this.customProperties.map((property) => ({
@@ -164,6 +188,9 @@ export class ListSettingsComponent implements OnChanges {
         type: property.type,
       })),
     });
+
+    // Keep display settings in sync so new properties appear on the list immediately.
+    this.onSaveViewSettings();
   }
 
   onSaveViewSettings(): void {

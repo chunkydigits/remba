@@ -12,6 +12,8 @@ public class ListDto
 
     public string Description { get; set; } = string.Empty;
 
+    public string? ReferralLink { get; set; }
+
     public string? EntityType { get; set; }
 
     public List<ListAttributeDefinitionDto> Attributes { get; set; } = [];
@@ -58,6 +60,8 @@ public class ListSummaryDto
     public string Visibility { get; set; } = ListVisibility.Private;
 
     public string? EntityType { get; set; }
+
+    public string? ReferralLink { get; set; }
 
     public DateTime Added { get; set; }
 

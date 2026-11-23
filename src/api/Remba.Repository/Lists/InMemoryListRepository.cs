@@ -86,10 +86,11 @@ public class InMemoryListRepository : IListRepository
             Visibility = source.Visibility,
             Name = source.Name,
             Description = source.Description,
+            ReferralLink = source.ReferralLink,
             Configuration = new ListConfigurationDbo
             {
-                EntityType = source.Configuration.EntityType,
-                    Attributes = source.Configuration.Attributes
+                EntityType = source.Configuration?.EntityType,
+                Attributes = (source.Configuration?.Attributes ?? [])
                     .Select(attribute => new ListAttributeDefinitionDbo
                     {
                         Key = attribute.Key,

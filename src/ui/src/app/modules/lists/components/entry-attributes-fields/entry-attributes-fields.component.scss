@@ -1,0 +1,32 @@
+.entry-attributes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.entry-attributes__heading {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+}
+
+.entry-attributes__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.entry-attributes__fields mat-form-field {
+  width: 100%;
+}
+
+.entry-attributes__boolean {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.entry-attributes__hint {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}

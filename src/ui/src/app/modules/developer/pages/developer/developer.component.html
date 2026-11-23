@@ -1,0 +1,200 @@
+<app-page-template title="Developer">
+  <p class="developer__lede">
+    Embed a Remba save button on any site. The control stays on the host page; Remba is only
+    contacted to sign in (if needed) and to add the item to a list.
+  </p>
+
+  <section class="developer__section">
+    <h2>How it works</h2>
+    <ol class="developer__steps">
+      <li>Load <code>/embed/remba.js</code> with your app/API settings.</li>
+      <li>
+        Place a <code>data-remba-save</code> element with either an entity id, a simple JSON item, or
+        plain fields.
+      </li>
+      <li>Visitors click the R mark → Add to List → + on a list.</li>
+    </ol>
+  </section>
+
+  <section class="developer__section">
+    <h2>Item payload</h2>
+    <p>
+      Prefer <code>data-entity-type</code> + <code>data-id</code>. Remba resolves ISBN, IMDb id, or
+      country code into a proper catalog record. Optional <code>data-id-type</code> forces the
+      identifier kind.
+    </p>
+    <div class="developer__table-wrap">
+      <table class="developer__table">
+        <thead>
+          <tr>
+            <th>Entity type</th>
+            <th>Default id type</th>
+            <th>Example id</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>book</code></td>
+            <td><code>isbn</code></td>
+            <td><code>9780441172719</code></td>
+          </tr>
+          <tr>
+            <td><code>film</code> / <code>tv</code></td>
+            <td><code>imdbId</code></td>
+            <td><code>tt0062622</code></td>
+          </tr>
+          <tr>
+            <td><code>country</code></td>
+            <td><code>iso2</code></td>
+            <td><code>JP</code></td>
+          </tr>
+          <tr>
+            <td><code>recipe</code></td>
+            <td><code>url</code></td>
+            <td>page URL</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Simple JSON schema</h3>
+    <p>
+      Pass <code>data-item='&#123;...&#125;'</code> when you want one attribute. Keep it tiny — only
+      these keys are read:
+    </p>
+    <pre class="developer__code">{{ '{' }}
+  "entityType": "book | film | tv | country | recipe",
+  "id": "ISBN / IMDb / ISO2 / URL",
+  "idType": "isbn | imdbId | iso2 | url | openLibraryWork",
+  "name": "optional display name",
+  "author": "optional",
+  "director": "optional",
+  "link": "optional",
+  "imageUrl": "optional",
+  "referral": "optional source page URL"
+{{ '}' }}</pre>
+  </section>
+
+  <div class="developer__layout" [formGroup]="configForm">
+    <section class="developer__section">
+      <h2>Live preview</h2>
+      <div class="developer__preview" [ngStyle]="previewBackdropStyle">
+        <h3>{{ configForm.controls.name.value || 'Sample item' }}</h3>
+        <p class="developer__meta">
+          @if (configForm.controls.mode.value === 'identifier') {
+            {{ configForm.controls.entityType.value }} · {{ configForm.controls.id.value }}
+          } @else {
+            {{ configForm.controls.author.value }}
+          }
+        </p>
+        <div #previewHost></div>
+      </div>
+    </section>
+
+    <section class="developer__section">
+      <h2>Configurator</h2>
+      <div class="developer__grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Payload mode</mat-label>
+          <mat-select formControlName="mode">
+            <mat-option value="identifier">Entity type + id</mat-option>
+            <mat-option value="json">JSON object</mat-option>
+            <mat-option value="manual">Manual fields</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Theme</mat-label>
+          <mat-select formControlName="theme">
+            <mat-option value="light">Light</mat-option>
+            <mat-option value="dark">Dark</mat-option>
+            <mat-option value="custom">Custom colours</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Preview page</mat-label>
+          <mat-select formControlName="previewBackdrop">
+            <mat-option value="light">Light page</mat-option>
+            <mat-option value="dark">Dark page</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        @if (customTheme) {
+          <mat-form-field appearance="outline">
+            <mat-label>Text colour</mat-label>
+            <input matInput type="color" formControlName="color" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Background</mat-label>
+            <input matInput type="color" formControlName="background" />
+          </mat-form-field>
+          <mat-checkbox formControlName="useOptionalColors">Override border &amp; muted</mat-checkbox>
+          @if (configForm.controls.useOptionalColors.value) {
+            <mat-form-field appearance="outline">
+              <mat-label>Border</mat-label>
+              <input matInput type="color" formControlName="border" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Muted text</mat-label>
+              <input matInput type="color" formControlName="muted" />
+            </mat-form-field>
+          }
+        }
+
+        @if (configForm.controls.mode.value !== 'manual') {
+          <mat-form-field appearance="outline">
+            <mat-label>Entity type</mat-label>
+            <mat-select formControlName="entityType">
+              <mat-option value="book">book</mat-option>
+              <mat-option value="film">film</mat-option>
+              <mat-option value="tv">tv</mat-option>
+              <mat-option value="country">country</mat-option>
+              <mat-option value="recipe">recipe</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Id</mat-label>
+            <input matInput formControlName="id" autocomplete="off" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Id type (optional)</mat-label>
+            <mat-select formControlName="idType">
+              <mat-option value="">Auto</mat-option>
+              <mat-option value="isbn">isbn</mat-option>
+              <mat-option value="imdbId">imdbId</mat-option>
+              <mat-option value="iso2">iso2</mat-option>
+              <mat-option value="url">url</mat-option>
+              <mat-option value="openLibraryWork">openLibraryWork</mat-option>
+            </mat-select>
+          </mat-form-field>
+        }
+
+        <mat-form-field appearance="outline">
+          <mat-label>Name (optional with id)</mat-label>
+          <input matInput formControlName="name" autocomplete="off" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Author</mat-label>
+          <input matInput formControlName="author" autocomplete="off" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="developer__full">
+          <mat-label>Link</mat-label>
+          <input matInput formControlName="link" autocomplete="off" />
+        </mat-form-field>
+      </div>
+    </section>
+  </div>
+
+  <section class="developer__section">
+    <h2>Embed snippet</h2>
+    <pre class="developer__code">{{ snippet }}</pre>
+  </section>
+
+  @if (configForm.controls.mode.value === 'json') {
+    <section class="developer__section">
+      <h2>data-item JSON</h2>
+      <pre class="developer__code">{{ jsonExample }}</pre>
+    </section>
+  }
+</app-page-template>

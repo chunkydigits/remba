@@ -20,16 +20,23 @@ import {
 } from 'rxjs';
 import { MaterialModule } from '../../../../core/material.module';
 import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
+import { EntryAttributesFieldsComponent } from '../../components/entry-attributes-fields/entry-attributes-fields.component';
 import { ListService } from '../../services/list.service';
 import { EntryService } from '../../services/entry.service';
 import { EntityService } from '../../services/entity.service';
 import {
+  ListAttributeDefinition,
   ListDetail,
   availableFieldsForEntityType,
   ListFieldKey,
 } from '../../models/list.model';
 import { CreateEntryRequest, ListEntry } from '../../models/entry.model';
 import { EntitySearchResult } from '../../models/entity.model';
+import {
+  createAttributesFormGroup,
+  serializeAttributes,
+  syncAttributesFormGroup,
+} from '../../utils/entry-attributes.util';
 
 const LOOKUP_ENTITY_TYPES = new Set(['film', 'tv', 'book', 'country']);
 
@@ -37,7 +44,14 @@ type AddMode = 'done' | 'another';
 
 @Component({
   selector: 'app-add-entry',
-  imports: [CommonModule, ReactiveFormsModule, MaterialModule, PageTemplateComponent, RouterLink],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MaterialModule,
+    PageTemplateComponent,
+    RouterLink,
+    EntryAttributesFieldsComponent,
+  ],
   templateUrl: './add-entry.component.html',
   styleUrl: './add-entry.component.scss',
 })
@@ -63,6 +77,7 @@ export class AddEntryComponent {
   searchError = '';
   saving = false;
   savingKey: string | null = null;
+  customDefinitions: ListAttributeDefinition[] = [];
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(200)]],
@@ -76,6 +91,7 @@ export class AddEntryComponent {
     read: [false],
     visited: [false],
     seen: [false],
+    attributes: createAttributesFormGroup(this.formBuilder, []),
   });
 
   readonly providerSearchForm = this.formBuilder.nonNullable.group({
@@ -93,7 +109,17 @@ export class AddEntryComponent {
         return of(null);
       }
 
-      return this.listService.getOwnList(listId).pipe(catchError(() => of(null)));
+      return this.listService.getOwnList(listId).pipe(
+        tap((list) => {
+          this.customDefinitions = [...(list.attributes || [])];
+          syncAttributesFormGroup(
+            this.form.controls.attributes,
+            this.formBuilder,
+            this.customDefinitions,
+          );
+        }),
+        catchError(() => of(null)),
+      );
     }),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
@@ -255,6 +281,7 @@ export class AddEntryComponent {
           read: value.read || undefined,
           visited: value.visited || undefined,
           seen: value.seen || undefined,
+          attributes: this.currentAttributesPayload(),
           identifier: isbn ? { type: 'isbn', value: isbn } : undefined,
           metadata: Object.keys(metadata).length ? metadata : undefined,
         },
@@ -322,6 +349,7 @@ export class AddEntryComponent {
           actors: result.actors || undefined,
           genre: result.genre || undefined,
           themes: result.themes || undefined,
+          attributes: this.currentAttributesPayload(),
           metadata: Object.keys(metadata).length ? metadata : undefined,
         },
         mode,
@@ -466,6 +494,18 @@ export class AddEntryComponent {
     return (entityType || '').trim().toLowerCase() === 'book';
   }
 
+  private currentAttributesPayload(): Record<string, unknown> | undefined {
+    if (this.customDefinitions.length === 0) {
+      return undefined;
+    }
+
+    const attributes = serializeAttributes(
+      this.customDefinitions,
+      this.form.controls.attributes.getRawValue(),
+    );
+    return Object.keys(attributes).length ? attributes : undefined;
+  }
+
   private createEntry(
     listId: string,
     request: CreateEntryRequest,
@@ -498,6 +538,11 @@ export class AddEntryComponent {
           visited: false,
           seen: false,
         });
+        syncAttributesFormGroup(
+          this.form.controls.attributes,
+          this.formBuilder,
+          this.customDefinitions,
+        );
         this.entriesReload$.next();
 
         if (mode === 'done') {

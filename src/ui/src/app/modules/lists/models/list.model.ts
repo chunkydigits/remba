@@ -4,6 +4,7 @@ export interface ListSummary {
   description: string;
   visibility: 'private' | 'public' | string;
   entityType?: string | null;
+  referralLink?: string | null;
   added: string;
   edited: string | null;
 }
@@ -15,7 +16,7 @@ export interface ListViewSettings {
   visibleFields?: string[];
 }
 
-export type ListAttributeType = 'text' | 'number' | 'boolean' | 'url';
+export type ListAttributeType = 'text' | 'number' | 'boolean' | 'url' | 'list';
 
 export interface ListAttributeDefinition {
   key: string;
@@ -32,6 +33,7 @@ export interface ListDetail {
   description: string;
   visibility: 'private' | 'public' | string;
   entityType?: string | null;
+  referralLink?: string | null;
   attributes?: ListAttributeDefinition[];
   viewSettings: ListViewSettings;
   added: string;
@@ -43,6 +45,7 @@ export interface CreateListRequest {
   description?: string;
   entityType?: string;
   visibility?: string;
+  referralLink?: string;
 }
 
 export interface UpdateListRequest {
@@ -50,6 +53,7 @@ export interface UpdateListRequest {
   description?: string;
   entityType?: string;
   visibility?: string;
+  referralLink?: string;
   attributes?: Array<{
     key?: string;
     name: string;
@@ -63,6 +67,7 @@ export const LIST_ATTRIBUTE_TYPE_OPTIONS: Array<{ value: ListAttributeType; labe
   { value: 'number', label: 'Number' },
   { value: 'boolean', label: 'True / false' },
   { value: 'url', label: 'URL' },
+  { value: 'list', label: 'List (comma-separated)' },
 ];
 
 export interface UpdateListViewSettingsRequest {

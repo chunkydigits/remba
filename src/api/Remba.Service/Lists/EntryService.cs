@@ -49,14 +49,25 @@ public class EntryService : IEntryService
             throw new ArgumentException("List id is required.", nameof(listId));
         }
 
-        var name = StringUtilities.NormalizeWhitespace(request.Name);
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("Entry name is required.");
-        }
-
         var list = await RequireOwnedListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
         var enrichment = await ResolveEnrichmentAsync(list, request, cancellationToken).ConfigureAwait(false);
+
+        var name = enrichment.ResolvedName
+            ?? StringUtilities.NormalizeWhitespace(request.Name);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            var fallbackIdentifier = StringUtilities.NormalizeWhitespace(request.Identifier?.Value);
+            if (!string.IsNullOrWhiteSpace(fallbackIdentifier))
+            {
+                name = fallbackIdentifier;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Entry name is required (or provide an identifier that can be resolved).");
+        }
+
         var now = DateTime.UtcNow;
 
         var entity = await ResolveEntityForCreateAsync(
@@ -855,10 +866,42 @@ public class EntryService : IEntryService
             Seen = entry.Seen,
             SeenAt = entry.SeenAt,
             Order = entry.Order,
-            Attributes = new Dictionary<string, JsonElement>(entry.Attributes, StringComparer.Ordinal),
+            Attributes = MapAttributesForDto(entry.Attributes),
             Added = entry.Added,
             Edited = entry.Edited
         };
+
+    private static Dictionary<string, object?> MapAttributesForDto(Dictionary<string, JsonElement>? source)
+    {
+        var result = new Dictionary<string, object?>(StringComparer.Ordinal);
+        if (source is null || source.Count == 0)
+        {
+            return result;
+        }
+
+        foreach (var pair in source)
+        {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+            {
+                continue;
+            }
+
+            result[pair.Key] = pair.Value.ValueKind switch
+            {
+                JsonValueKind.String => pair.Value.GetString(),
+                JsonValueKind.Number => pair.Value.TryGetInt64(out var longValue)
+                    ? longValue
+                    : pair.Value.GetDouble(),
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Null => null,
+                JsonValueKind.Undefined => null,
+                _ => pair.Value.GetRawText()
+            };
+        }
+
+        return result;
+    }
 
     private static bool IsWatchableEntityType(string? entityType) =>
         string.Equals(entityType, EntityTypes.Film, StringComparison.OrdinalIgnoreCase)

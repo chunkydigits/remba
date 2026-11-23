@@ -53,6 +53,15 @@
             <mat-icon matListItemIcon>settings</mat-icon>
             <span matListItemTitle>Settings</span>
           </a>
+          <a
+            mat-list-item
+            routerLink="/developer"
+            routerLinkActive="page-template__nav-active"
+            (click)="closeMenu()"
+          >
+            <mat-icon matListItemIcon>code</mat-icon>
+            <span matListItemTitle>Developer</span>
+          </a>
         </mat-nav-list>
 
         <div class="page-template__drawer-footer">

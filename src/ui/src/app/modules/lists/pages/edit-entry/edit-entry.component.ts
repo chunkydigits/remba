@@ -18,18 +18,32 @@ import {
 } from 'rxjs';
 import { MaterialModule } from '../../../../core/material.module';
 import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
+import { EntryAttributesFieldsComponent } from '../../components/entry-attributes-fields/entry-attributes-fields.component';
 import { ListService } from '../../services/list.service';
 import { EntryService } from '../../services/entry.service';
 import {
+  ListAttributeDefinition,
   ListDetail,
   ListFieldOption,
   availableFieldsForEntityType,
 } from '../../models/list.model';
 import { ListEntry, UpdateEntryRequest } from '../../models/entry.model';
+import {
+  createAttributesFormGroup,
+  serializeAttributes,
+  syncAttributesFormGroup,
+} from '../../utils/entry-attributes.util';
 
 @Component({
   selector: 'app-edit-entry',
-  imports: [CommonModule, ReactiveFormsModule, MaterialModule, PageTemplateComponent, RouterLink],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MaterialModule,
+    PageTemplateComponent,
+    RouterLink,
+    EntryAttributesFieldsComponent,
+  ],
   templateUrl: './edit-entry.component.html',
   styleUrl: './edit-entry.component.scss',
 })
@@ -46,6 +60,7 @@ export class EditEntryComponent {
   error = '';
   saving = false;
   loaded = false;
+  customDefinitions: ListAttributeDefinition[] = [];
 
   readonly form = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(200)]],
@@ -58,6 +73,7 @@ export class EditEntryComponent {
     read: [false],
     visited: [false],
     seen: [false],
+    attributes: createAttributesFormGroup(this.formBuilder, []),
   });
 
   readonly listId$: Observable<string | null> = this.route.paramMap.pipe(
@@ -93,9 +109,10 @@ export class EditEntryComponent {
   readonly entry$: Observable<ListEntry | null> = combineLatest([
     this.listId$,
     this.entryId$,
+    this.list$,
     this.reload$,
   ]).pipe(
-    switchMap(([listId, entryId]) => {
+    switchMap(([listId, entryId, list]) => {
       if (!listId || !entryId) {
         return of(null);
       }
@@ -103,7 +120,14 @@ export class EditEntryComponent {
       return this.entryService.get(listId, entryId).pipe(
         tap((entry) => {
           this.loaded = true;
-          this.form.reset({
+          this.customDefinitions = [...(list?.attributes || [])];
+          syncAttributesFormGroup(
+            this.form.controls.attributes,
+            this.formBuilder,
+            this.customDefinitions,
+            entry.attributes,
+          );
+          this.form.patchValue({
             name: entry.name || '',
             author: entry.author || '',
             director: entry.director || '',
@@ -144,8 +168,10 @@ export class EditEntryComponent {
         switchMap((list) => {
           const entityType = (list?.entityType || '').trim().toLowerCase();
           const fields = new Set(availableFieldsForEntityType(entityType).map((field) => field.key));
+          const definitions = list?.attributes || [];
           const request: UpdateEntryRequest = {
             name: value.name.trim(),
+            attributes: serializeAttributes(definitions, value.attributes),
           };
 
           if (fields.has('author')) {

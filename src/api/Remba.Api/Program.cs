@@ -25,10 +25,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("RembaUi", policy =>
     {
-        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                      ?? ["http://localhost:4600"];
-
-        policy.WithOrigins(origins)
+        // Embed buttons call the API from arbitrary host pages using bearer tokens.
+        // Keep this open; authorization still requires a valid Auth0 access token.
+        policy.AllowAnyOrigin()
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

@@ -1,0 +1,74 @@
+@if (payload$ | async; as payload) {
+  <div class="embed-menu" role="menu" aria-label="Remba">
+    <header class="embed-menu__header">
+      <span class="embed-menu__brand" aria-hidden="true">R</span>
+      <div class="embed-menu__item-copy">
+        <p class="embed-menu__item-name">{{ payload.name || 'Untitled item' }}</p>
+        @if (payload.author) {
+          <p class="embed-menu__item-meta">{{ payload.author }}</p>
+        }
+      </div>
+    </header>
+
+    <div class="embed-menu__body">
+      <div class="embed-menu__row" [class.embed-menu__row--open]="listsOpen">
+        <button
+          type="button"
+          class="embed-menu__action"
+          role="menuitem"
+          [attr.aria-expanded]="listsOpen"
+          aria-haspopup="menu"
+          (click)="toggleLists()"
+        >
+          <span>Add to List</span>
+          <mat-icon aria-hidden="true">{{ listsOpen ? 'expand_more' : 'chevron_right' }}</mat-icon>
+        </button>
+
+        @if (listsOpen) {
+          <div class="embed-menu__submenu" role="menu" aria-label="Your lists">
+            @if (lists$ | async; as lists) {
+              @if (lists.length === 0) {
+                <p class="embed-menu__empty">No lists yet.</p>
+                <a class="embed-menu__link" routerLink="/lists/new">Create a list</a>
+              } @else {
+                <ul class="embed-menu__lists">
+                  @for (list of lists; track list.id) {
+                    <li class="embed-menu__list-row">
+                      <span class="embed-menu__list-name" [title]="list.name">{{ list.name }}</span>
+                      <button
+                        type="button"
+                        class="embed-menu__add"
+                        [attr.aria-label]="
+                          isSaved(list.id) ? 'Added to ' + list.name : 'Add to ' + list.name
+                        "
+                        [disabled]="!!savingListId || isSaved(list.id) || !payload.name"
+                        (click)="addToList(list, payload)"
+                      >
+                        @if (savingListId === list.id) {
+                          <mat-spinner diameter="16"></mat-spinner>
+                        } @else if (isSaved(list.id)) {
+                          <mat-icon aria-hidden="true">check</mat-icon>
+                        } @else {
+                          <mat-icon aria-hidden="true">add</mat-icon>
+                        }
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            } @else {
+              <p class="embed-menu__empty">Loading lists…</p>
+            }
+          </div>
+        }
+      </div>
+
+      @if (!payload.name) {
+        <p class="embed-menu__error">This embed is missing an item name.</p>
+      }
+      @if (error) {
+        <p class="embed-menu__error">{{ error }}</p>
+      }
+    </div>
+  </div>
+}

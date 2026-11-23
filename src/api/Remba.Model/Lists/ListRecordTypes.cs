@@ -37,4 +37,9 @@ public static class ListAttributeTypes
     public const string Boolean = "boolean";
 
     public const string Url = "url";
+
+    /// <summary>
+    /// Comma-separated values, shown as chips in the UI.
+    /// </summary>
+    public const string List = "list";
 }

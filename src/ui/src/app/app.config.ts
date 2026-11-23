@@ -20,6 +20,9 @@ export const appConfig: ApplicationConfig = {
         redirect_uri: window.location.origin,
         audience: environment.auth0.audience || undefined,
       },
+      // Shared with /embed/auth.html so the save-button menu can reuse the SPA session.
+      cacheLocation: 'localstorage',
+      useRefreshTokens: true,
       httpInterceptor: {
         allowedList: [`${environment.apiBaseUrl}/api/*`],
       },

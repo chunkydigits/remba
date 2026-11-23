@@ -42,7 +42,7 @@ public class EntryDto
 
     public int Order { get; set; }
 
-    public Dictionary<string, JsonElement> Attributes { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, object?> Attributes { get; set; } = new(StringComparer.Ordinal);
 
     public DateTime Added { get; set; }
 
@@ -51,7 +51,9 @@ public class EntryDto
 
 public class CreateEntryRequest
 {
-    [Required]
+    /// <summary>
+    /// Display name. Optional when <see cref="Identifier"/> is provided — lookup may resolve it.
+    /// </summary>
     [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 

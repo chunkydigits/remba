@@ -108,18 +108,28 @@ public class ListServiceTests
                     {
                         Name = "Finished",
                         Type = "true/false"
+                    },
+                    new ListAttributeDefinitionRequest
+                    {
+                        Name = "Cities",
+                        Type = "list"
                     }
                 ]
             });
 
-        Assert.Equal(2, result.Attributes.Count);
+        Assert.Equal(3, result.Attributes.Count);
         Assert.Equal("page-count", result.Attributes[0].Key);
         Assert.Equal("Page count", result.Attributes[0].Name);
         Assert.Equal("Total pages", result.Attributes[0].Description);
         Assert.Equal(ListAttributeTypes.Number, result.Attributes[0].Type);
         Assert.Equal("finished", result.Attributes[1].Key);
         Assert.Equal(ListAttributeTypes.Boolean, result.Attributes[1].Type);
+        Assert.Equal("cities", result.Attributes[2].Key);
+        Assert.Equal(ListAttributeTypes.List, result.Attributes[2].Type);
         Assert.All(result.Attributes, attribute => Assert.Equal("entry", attribute.Scope));
+        Assert.Contains("page-count", result.ViewSettings.VisibleFields);
+        Assert.Contains("finished", result.ViewSettings.VisibleFields);
+        Assert.Contains("cities", result.ViewSettings.VisibleFields);
     }
 
     [Fact]
@@ -162,6 +172,39 @@ public class ListServiceTests
         Assert.Equal(ListSortDirections.Descending, result.ViewSettings.SortDirection);
         Assert.Equal(ListViewModes.Grid, result.ViewSettings.ViewMode);
         Assert.Equal(["name", "author", "read"], result.ViewSettings.VisibleFields);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenReferralLinkProvided_ThenShouldPersistAbsoluteUrl()
+    {
+        var existing = new ListDbo
+        {
+            Id = "list1",
+            OwnerId = "user1",
+            RecordType = ListRecordTypes.List,
+            Name = "Books",
+            Visibility = ListVisibility.Private,
+            Configuration = new ListConfigurationDbo(),
+            ViewSettings = new ListViewSettingsDbo(),
+            Added = DateTime.UtcNow.AddDays(-1),
+            AddedByUserId = "user1"
+        };
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        _repository
+            .Setup(repository => repository.UpdateAsync(It.IsAny<ListDbo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ListDbo list, CancellationToken _) => list);
+
+        var service = CreateService();
+
+        var result = await service.UpdateAsync(
+            "user1",
+            "list1",
+            new UpdateListRequest { ReferralLink = " https://example.com/inspiration " });
+
+        Assert.Equal("https://example.com/inspiration", result.ReferralLink);
     }
 
     [Fact]

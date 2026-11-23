@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,6 +18,7 @@ const materialModules = [
   MatButtonModule,
   MatButtonToggleModule,
   MatCheckboxModule,
+  MatChipsModule,
   MatDialogModule,
   MatFormFieldModule,
   MatIconModule,

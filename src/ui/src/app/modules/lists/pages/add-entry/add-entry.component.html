@@ -70,6 +70,13 @@
           }
         </dl>
 
+        <form class="add-entry__form" [formGroup]="form">
+          <app-entry-attributes-fields
+            [definitions]="customDefinitions"
+            [formGroup]="form.controls.attributes"
+          ></app-entry-attributes-fields>
+        </form>
+
         @if (error) {
           <p class="add-entry__error">{{ error }}</p>
         }
@@ -220,6 +227,11 @@
               <mat-checkbox formControlName="seen" color="primary">Seen</mat-checkbox>
             }
           }
+
+          <app-entry-attributes-fields
+            [definitions]="customDefinitions"
+            [formGroup]="form.controls.attributes"
+          ></app-entry-attributes-fields>
 
           @if (success) {
             <p class="add-entry__success">Added. Ready for the next one.</p>

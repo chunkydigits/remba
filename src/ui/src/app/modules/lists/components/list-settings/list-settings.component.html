@@ -11,6 +11,12 @@
       <textarea matInput rows="3" formControlName="description"></textarea>
     </mat-form-field>
 
+    <mat-form-field appearance="outline">
+      <mat-label>Referral link</mat-label>
+      <input matInput type="url" formControlName="referralLink" placeholder="https://" autocomplete="off" />
+      <mat-hint>Where this collection’s inspiration came from (set by the save plugin)</mat-hint>
+    </mat-form-field>
+
     <app-entity-type-select formControlName="entityType"></app-entity-type-select>
 
     <mat-form-field appearance="outline">
@@ -24,7 +30,8 @@
     <div class="list-settings__properties">
       <h3>Custom properties</h3>
       <p class="list-settings__hint">
-        Extra fields for items on this list. Saved with your list, not the shared template.
+        Extra fields for items on this list. Click Add property, then Save details to keep them.
+        They are saved with your list, not the shared template.
       </p>
 
       @if (customProperties.length > 0) {

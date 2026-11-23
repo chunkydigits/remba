@@ -1,0 +1,81 @@
+@if (hasFields) {
+  <section class="entry-attributes" [formGroup]="formGroup">
+    <h3 class="entry-attributes__heading">{{ heading }}</h3>
+
+    <div class="entry-attributes__fields">
+      @for (definition of definitions; track definition.key) {
+        @if (definition.key) {
+          @switch (normaliseType(definition.type)) {
+            @case ('boolean') {
+              <div class="entry-attributes__boolean">
+                <mat-checkbox [formControlName]="definition.key" color="primary">
+                  {{ definition.name }}
+                </mat-checkbox>
+                @if (definition.description) {
+                  <p class="entry-attributes__hint">{{ definition.description }}</p>
+                }
+              </div>
+            }
+            @case ('number') {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ definition.name }}</mat-label>
+                <input matInput type="number" [formControlName]="definition.key" />
+                @if (definition.description) {
+                  <mat-hint>{{ definition.description }}</mat-hint>
+                }
+              </mat-form-field>
+            }
+            @case ('url') {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ definition.name }}</mat-label>
+                <input
+                  matInput
+                  type="url"
+                  [formControlName]="definition.key"
+                  autocomplete="off"
+                  placeholder="https://"
+                />
+                @if (definition.description) {
+                  <mat-hint>{{ definition.description }}</mat-hint>
+                }
+              </mat-form-field>
+            }
+            @case ('list') {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ definition.name }}</mat-label>
+                <mat-chip-grid #chipGrid [attr.aria-label]="definition.name">
+                  @for (item of listItems(definition.key); track item) {
+                    <mat-chip-row (removed)="removeListItem(definition.key, item)">
+                      {{ item }}
+                      <button matChipRemove type="button" [attr.aria-label]="'Remove ' + item">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                    </mat-chip-row>
+                  }
+                </mat-chip-grid>
+                <input
+                  [matChipInputFor]="chipGrid"
+                  [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+                  [matChipInputAddOnBlur]="true"
+                  (matChipInputTokenEnd)="addListItem($event, definition.key)"
+                  autocomplete="off"
+                  placeholder="Type and press comma"
+                />
+                <mat-hint>{{ definition.description || 'Press comma or Enter to add' }}</mat-hint>
+              </mat-form-field>
+            }
+            @default {
+              <mat-form-field appearance="outline">
+                <mat-label>{{ definition.name }}</mat-label>
+                <input matInput [formControlName]="definition.key" autocomplete="off" />
+                @if (definition.description) {
+                  <mat-hint>{{ definition.description }}</mat-hint>
+                }
+              </mat-form-field>
+            }
+          }
+        }
+      }
+    </div>
+  </section>
+}

@@ -1,11 +1,21 @@
-.page-template {
-  min-height: 100dvh;
+:host {
+  display: block;
 }
 
+// Grow with page content — Material's default 100% height clips long pages.
+.page-template.mat-drawer-container {
+  height: auto;
+  min-height: 100dvh;
+  position: relative;
+  background: transparent;
+}
+
+.page-template__shell.mat-drawer-content,
 .page-template__shell {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
 .page-template__drawer {

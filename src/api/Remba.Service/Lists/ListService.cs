@@ -45,6 +45,7 @@ public class ListService : IListService
                     Visibility = visibility,
                     Name = name,
                     Description = StringUtilities.NormalizeWhitespace(request.Description),
+                    ReferralLink = NormaliseReferralLink(request.ReferralLink),
                     Configuration = new ListConfigurationDbo
                     {
                         EntityType = NormaliseOptional(request.EntityType),
@@ -104,6 +105,11 @@ public class ListService : IListService
             list.Description = StringUtilities.NormalizeWhitespace(request.Description);
         }
 
+        if (request.ReferralLink is not null)
+        {
+            list.ReferralLink = NormaliseReferralLink(request.ReferralLink);
+        }
+
         if (request.EntityType is not null)
         {
             list.Configuration.EntityType = NormaliseOptional(request.EntityType);
@@ -116,7 +122,9 @@ public class ListService : IListService
 
         if (request.Attributes is not null)
         {
+            list.Configuration ??= new ListConfigurationDbo();
             list.Configuration.Attributes = NormaliseAttributes(request.Attributes);
+            EnsureCustomAttributesVisible(list);
         }
 
         list.Edited = DateTime.UtcNow;
@@ -293,12 +301,18 @@ public class ListService : IListService
             value = ListAttributeTypes.Boolean;
         }
 
+        if (value is "chips" or "tags" or "comma-separated" or "csv")
+        {
+            value = ListAttributeTypes.List;
+        }
+
         if (value != ListAttributeTypes.Text
             && value != ListAttributeTypes.Number
             && value != ListAttributeTypes.Boolean
-            && value != ListAttributeTypes.Url)
+            && value != ListAttributeTypes.Url
+            && value != ListAttributeTypes.List)
         {
-            throw new ArgumentException("Property type must be text, number, boolean, or url.");
+            throw new ArgumentException("Property type must be text, number, boolean, url, or list.");
         }
 
         return value;
@@ -320,16 +334,54 @@ public class ListService : IListService
         return key.Trim('-');
     }
 
-    private static ListDto MapToDto(ListDbo list) =>
-        new()
+    private static void EnsureCustomAttributesVisible(ListDbo list)
+    {
+        list.ViewSettings ??= new ListViewSettingsDbo();
+        list.ViewSettings.VisibleFields ??= [];
+
+        var visible = list.ViewSettings.VisibleFields;
+        foreach (var attribute in list.Configuration.Attributes ?? [])
+        {
+            if (visible.All(field => !string.Equals(field, attribute.Key, StringComparison.OrdinalIgnoreCase)))
+            {
+                visible.Add(attribute.Key);
+            }
+        }
+    }
+
+    private static string? NormaliseReferralLink(string? referralLink)
+    {
+        var value = StringUtilities.NormalizeWhitespace(referralLink);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException("Referral link must be an absolute http or https URL.");
+        }
+
+        return uri.AbsoluteUri;
+    }
+
+    private static ListDto MapToDto(ListDbo list)
+    {
+        var configuration = list.Configuration ?? new ListConfigurationDbo();
+        var attributes = configuration.Attributes ?? [];
+        var viewSettings = list.ViewSettings ?? new ListViewSettingsDbo();
+
+        return new ListDto
         {
             Id = list.Id,
             OwnerId = list.OwnerId,
             Visibility = list.Visibility,
             Name = list.Name,
             Description = list.Description,
-            EntityType = list.Configuration.EntityType,
-            Attributes = list.Configuration.Attributes
+            ReferralLink = list.ReferralLink,
+            EntityType = configuration.EntityType,
+            Attributes = attributes
                 .Select(attribute => new ListAttributeDefinitionDto
                 {
                     Key = attribute.Key,
@@ -341,14 +393,15 @@ public class ListService : IListService
                 .ToList(),
             ViewSettings = new ListViewSettingsDto
             {
-                SortBy = list.ViewSettings.SortBy,
-                SortDirection = list.ViewSettings.SortDirection,
-                ViewMode = list.ViewSettings.ViewMode,
-                VisibleFields = [.. list.ViewSettings.VisibleFields]
+                SortBy = viewSettings.SortBy,
+                SortDirection = viewSettings.SortDirection,
+                ViewMode = viewSettings.ViewMode,
+                VisibleFields = [.. viewSettings.VisibleFields ?? []]
             },
             Added = list.Added,
             Edited = list.Edited
         };
+    }
 
     private static ListSummaryDto MapToSummary(ListDbo list) =>
         new()
@@ -358,6 +411,7 @@ public class ListService : IListService
             Description = list.Description,
             Visibility = list.Visibility,
             EntityType = list.Configuration.EntityType,
+            ReferralLink = list.ReferralLink,
             Added = list.Added,
             Edited = list.Edited
         };

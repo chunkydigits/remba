@@ -22,6 +22,12 @@ public class ListDbo
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Page or source that inspired this collection (e.g. plugin referral URL).
+    /// </summary>
+    [JsonPropertyName("referralLink")]
+    public string? ReferralLink { get; set; }
+
     [JsonPropertyName("configuration")]
     public ListConfigurationDbo Configuration { get; set; } = new();
 

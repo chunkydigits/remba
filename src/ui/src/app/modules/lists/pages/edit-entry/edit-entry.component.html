@@ -101,6 +101,11 @@
             </div>
           }
 
+          <app-entry-attributes-fields
+            [definitions]="customDefinitions"
+            [formGroup]="form.controls.attributes"
+          ></app-entry-attributes-fields>
+
           @if (error) {
             <p class="entry-detail__error">{{ error }}</p>
           }

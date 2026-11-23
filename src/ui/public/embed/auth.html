@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Remba sign-in</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        font: 500 0.9rem/1.4 system-ui, sans-serif;
+        color: #111;
+        background: #f6f4f0;
+      }
+      .card {
+        width: min(18rem, calc(100% - 1.25rem));
+        padding: 1rem 1.1rem;
+        border: 1px solid #e5e1da;
+        border-radius: 0.75rem;
+        background: #fff;
+      }
+      p {
+        margin: 0;
+      }
+      .muted {
+        margin-top: 0.35rem;
+        color: #666;
+        font-weight: 400;
+        font-size: 0.82rem;
+      }
+      .error {
+        margin-top: 0.65rem;
+        color: #b00020;
+        font-size: 0.82rem;
+      }
+      button {
+        appearance: none;
+        margin-top: 0.85rem;
+        border: 0;
+        border-radius: 999px;
+        padding: 0.55rem 0.9rem;
+        background: #111;
+        color: #fff;
+        font: 600 0.85rem/1.2 system-ui, sans-serif;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p id="title">Connecting to Remba…</p>
+      <p id="subtitle" class="muted">Stay on this page — sign-in opens here.</p>
+      <p id="error" class="error" hidden></p>
+      <button id="signin" type="button" hidden>Sign in</button>
+    </div>
+
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var domain = params.get('domain') || '';
+        var clientId = params.get('clientId') || '';
+        var audience = params.get('audience') || '';
+        var embedded = params.get('embedded') === '1' || window.parent !== window;
+        var errorEl = document.getElementById('error');
+        var titleEl = document.getElementById('title');
+        var subtitleEl = document.getElementById('subtitle');
+        var signInBtn = document.getElementById('signin');
+        var client = null;
+
+        function fail(message) {
+          errorEl.hidden = false;
+          errorEl.textContent = message;
+        }
+
+        function targetWindow() {
+          if (embedded && window.parent && window.parent !== window) {
+            return window.parent;
+          }
+          return window.opener || null;
+        }
+
+        function post(payload) {
+          var target = targetWindow();
+          if (!target) {
+            fail('Open this from the Remba save control.');
+            return;
+          }
+          target.postMessage(payload, '*');
+        }
+
+        function done(token, expiresIn) {
+          post({
+            type: 'remba-auth',
+            ok: true,
+            accessToken: token,
+            expiresAt: Date.now() + Math.max(30, Number(expiresIn) || 3600) * 1000,
+          });
+          if (!embedded && window.opener) {
+            window.close();
+          }
+        }
+
+        async function createClient() {
+          if (typeof auth0 === 'undefined' || !auth0.createAuth0Client) {
+            throw new Error('Could not load Auth0.');
+          }
+
+          return auth0.createAuth0Client({
+            domain: domain,
+            clientId: clientId,
+            authorizationParams: {
+              audience: audience || undefined,
+              redirect_uri: window.location.origin + '/embed/auth.html',
+            },
+            cacheLocation: 'localstorage',
+            useRefreshTokens: true,
+          });
+        }
+
+        async function takeToken() {
+          var detailed = await client.getTokenSilently({
+            authorizationParams: { audience: audience || undefined },
+            detailedResponse: true,
+          });
+          done(detailed.access_token, detailed.expires_in);
+        }
+
+        async function interactiveLogin() {
+          titleEl.textContent = 'Sign in to Remba';
+          subtitleEl.textContent = 'Complete sign-in to add this item.';
+          signInBtn.hidden = true;
+          errorEl.hidden = true;
+
+          // Popup is scoped to Auth0 only; the host page menu stays put.
+          await client.loginWithPopup({
+            authorizationParams: { audience: audience || undefined },
+          });
+          await takeToken();
+        }
+
+        async function run() {
+          if (!domain || !clientId) {
+            fail('Missing Auth0 configuration.');
+            post({ type: 'remba-auth', ok: false, error: 'missing_config' });
+            return;
+          }
+
+          try {
+            client = await createClient();
+          } catch (error) {
+            fail((error && error.message) || 'Could not start Auth0.');
+            post({ type: 'remba-auth', ok: false, error: 'auth0_load_failed' });
+            return;
+          }
+
+          if (params.get('code') && params.get('state')) {
+            try {
+              await client.handleRedirectCallback();
+              window.history.replaceState({}, document.title, window.location.pathname);
+              await takeToken();
+              return;
+            } catch (error) {
+              fail((error && error.message) || 'Sign-in callback failed.');
+            }
+          }
+
+          try {
+            await takeToken();
+            return;
+          } catch (silentError) {
+            // need interactive login
+          }
+
+          titleEl.textContent = 'Sign in to Remba';
+          subtitleEl.textContent = 'Required once so this page can add to your lists.';
+          signInBtn.hidden = false;
+          signInBtn.onclick = function () {
+            interactiveLogin().catch(function (error) {
+              fail((error && error.message) || 'Sign-in was cancelled.');
+              post({
+                type: 'remba-auth',
+                ok: false,
+                error: (error && error.message) || 'login_failed',
+              });
+            });
+          };
+        }
+
+        run();
+      })();
+    </script>
+  </body>
+</html>
