@@ -25,7 +25,7 @@ declare global {
 type EmbedMode = 'identifier' | 'json' | 'manual';
 
 /** Bump when embed script behaviour/markup changes so browsers fetch a fresh copy. */
-const EMBED_SCRIPT_VERSION = '16';
+const EMBED_SCRIPT_VERSION = '18';
 
 @Component({
   selector: 'app-developer',

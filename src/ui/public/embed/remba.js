@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  var STYLE_ID = 'remba-save-styles-v15';
+  var STYLE_ID = 'remba-save-styles-v17';
   var ATTR = 'data-remba-save';
   var CHEVRON_DOWN = '▾';
   var CHEVRON_UP = '▴';
@@ -175,7 +175,46 @@
       return;
     }
     var surface = open ? theme.background : theme.buttonBackground;
-    img.src = markIconSrcForBackground(root._rembaAppUrl || '', surface);
+    var next = markIconSrcForBackground(root._rembaAppUrl || '', surface);
+    // Re-assigning the same URL still reloads the image in some browsers and flashes.
+    if (img.getAttribute('src') === next) {
+      return;
+    }
+    try {
+      if (img.src === new URL(next, window.location.href).href) {
+        return;
+      }
+    } catch (error) {
+      // Ignore URL parse errors and fall through to assign.
+    }
+    img.src = next;
+  }
+
+  function flipMark(mark, applyDomChange) {
+    if (!mark) {
+      applyDomChange();
+      return;
+    }
+
+    var first = mark.getBoundingClientRect();
+    applyDomChange();
+    var last = mark.getBoundingClientRect();
+    var dx = first.left - last.left;
+    var dy = first.top - last.top;
+    if (!dx && !dy) {
+      return;
+    }
+
+    mark.style.transition = 'none';
+    mark.style.transform = 'translate(' + dx + 'px, ' + dy + 'px)';
+    void mark.offsetWidth;
+    mark.style.transition = 'transform ' + MORPH_MS + 'ms cubic-bezier(.2,.8,.2,1)';
+    mark.style.transform = 'translate(0, 0)';
+
+    window.setTimeout(function () {
+      mark.style.transition = '';
+      mark.style.transform = '';
+    }, MORPH_MS + 40);
   }
 
   function colinerFontUrl(appUrl) {
@@ -255,8 +294,7 @@
       '.remba-shell.is-open .remba-shell__brand{justify-content:flex-start;width:auto;flex:1;',
       'height:auto}',
       '.remba-mark{display:block;width:1.55rem;height:1.55rem;object-fit:contain;flex:0 0 auto;',
-      'transition:width ' + MORPH_MS + 'ms ease,height ' + MORPH_MS + 'ms ease}',
-      '.remba-shell.is-open .remba-mark{width:1.45rem;height:1.45rem}',
+      'position:relative;z-index:5;will-change:transform}',
       '.remba-word{font-family:Coliner,system-ui,sans-serif;font-size:1.2rem;line-height:1;',
       'letter-spacing:.01em;white-space:nowrap;opacity:0;max-width:0;overflow:hidden;',
       'transform:translateX(-.35rem);pointer-events:none;flex:0 0 auto;',
@@ -330,7 +368,9 @@
       '.remba-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;',
       'justify-content:center;gap:.65rem;padding:1rem;border-radius:inherit;',
       'background:color-mix(in srgb, var(--remba-bg) 92%, transparent);color:var(--remba-muted);',
-      'font-size:.82rem;text-align:center;z-index:2;pointer-events:none}',
+      'font-size:.82rem;text-align:center;z-index:1;pointer-events:none;opacity:1;',
+      'transition:opacity .18s ease}',
+      '.remba-loading.is-leaving{opacity:0}',
       '.remba-loading[hidden]{display:none!important}',
       '.remba-spinner{width:1.35rem;height:1.35rem;border-radius:999px;',
       'border:2px solid var(--remba-border);border-top-color:var(--remba-color);',
@@ -461,6 +501,7 @@
       return;
     }
 
+    loadingEl.classList.remove('is-leaving');
     setBusy(root, !!loading);
     loadingEl.hidden = !loading;
     if (loading && authFrame) {
@@ -469,6 +510,27 @@
     if (label) {
       label.textContent = message || 'Loading…';
     }
+  }
+
+  function dismissLoading(root) {
+    var loadingEl = root.querySelector('.remba-loading');
+    setBusy(root, false);
+    if (!loadingEl || loadingEl.hidden) {
+      return;
+    }
+
+    loadingEl.classList.add('is-leaving');
+    window.setTimeout(function () {
+      if (!loadingEl.classList.contains('is-leaving')) {
+        return;
+      }
+      loadingEl.hidden = true;
+      loadingEl.classList.remove('is-leaving');
+      var label = root.querySelector('.remba-loading__label');
+      if (label) {
+        label.textContent = 'Loading…';
+      }
+    }, 180);
   }
 
   function showAuthPanel(root) {
@@ -1139,8 +1201,16 @@
       renderCreateSection(createEl, item, root, config);
     }
 
+    function shellIsActive() {
+      var shellEl = root.querySelector('.remba-shell');
+      return root.classList.contains('is-open') && !(shellEl && shellEl._rembaClosing);
+    }
+
     var prepare = item.entityType && item.id
       ? resolveItemRecord(root, config, item).then(function (resolved) {
+          if (!shellIsActive()) {
+            return item;
+          }
           Object.keys(resolved).forEach(function (key) {
             item[key] = resolved[key];
           });
@@ -1151,12 +1221,18 @@
 
     prepare
       .then(function () {
+        if (!shellIsActive()) {
+          return null;
+        }
         return Promise.all([
           apiFetch(root, config, '/api/lists'),
           fetchContainingListIds(root, config, item),
         ]);
       })
       .then(function (results) {
+        if (!results || !shellIsActive()) {
+          return;
+        }
         var lists = results[0];
         var containingIds = results[1];
         renderLists(
@@ -1173,6 +1249,9 @@
         setLoading(root, false);
       })
       .catch(function (error) {
+        if (!shellIsActive()) {
+          return;
+        }
         submenu.innerHTML = '';
         setLoading(root, false);
         setStatus(statusEl, (error && error.message) || 'Could not load lists.', true);
@@ -1221,12 +1300,15 @@
       return;
     }
     shell._rembaClosing = true;
-    setBusy(root, false);
-    syncMark(root, theme, false);
-    setShellChromeState(shell, false);
+    dismissLoading(root);
 
-    root.classList.remove('is-open');
-    shell.classList.remove('is-open');
+    var mark = shell.querySelector('.remba-mark');
+    flipMark(mark, function () {
+      syncMark(root, theme, false);
+      setShellChromeState(shell, false);
+      root.classList.remove('is-open');
+      shell.classList.remove('is-open');
+    });
 
     var finished = false;
     function finish() {
@@ -1261,13 +1343,16 @@
     }
 
     applyShellAnchor(shell, resolveAnchor(root));
-    root.classList.add('is-open');
     elevateOpenShell(root);
-    setShellChromeState(shell, true);
-    syncMark(root, root._rembaTheme, true);
 
-    void shell.offsetWidth;
-    shell.classList.add('is-open');
+    var mark = shell.querySelector('.remba-mark');
+    flipMark(mark, function () {
+      root.classList.add('is-open');
+      setShellChromeState(shell, true);
+      syncMark(root, root._rembaTheme, true);
+      shell.classList.add('is-open');
+    });
+
     loadLists(root, item, config);
   }
 
