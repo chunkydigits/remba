@@ -16,6 +16,12 @@ public class CosmosDbOptions
     /// </summary>
     public int DatabaseThroughput { get; set; } = 400;
 
+    /// <summary>
+    /// When true, deletes and recreates the database if it exists without shared throughput
+    /// (typical free-tier trap where each container silently takes 400 RU/s).
+    /// </summary>
+    public bool RepairSharedThroughput { get; set; } = true;
+
     public CosmosContainersOptions Containers { get; set; } = new();
 
     public bool IsConfigured =>
