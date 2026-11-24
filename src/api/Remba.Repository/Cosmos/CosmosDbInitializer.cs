@@ -49,7 +49,7 @@ public class CosmosDbInitializer
 
             _logger.LogInformation("Cosmos database and containers are ready.");
         }
-        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest && ex.SubStatusCode == 1028)
+        catch (CosmosException ex) when (ex.StatusCode == global::System.Net.HttpStatusCode.BadRequest && ex.SubStatusCode == 1028)
         {
             throw new InvalidOperationException(
                 "Cosmos account throughput limit exceeded while creating containers. " +
