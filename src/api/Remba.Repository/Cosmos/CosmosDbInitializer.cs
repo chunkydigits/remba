@@ -7,6 +7,7 @@ namespace Remba.Repository.Cosmos;
 
 /// <summary>
 /// Ensures the Remba Cosmos database and core containers exist.
+/// Uses shared database throughput so containers do not each reserve 400 RU/s.
 /// </summary>
 public class CosmosDbInitializer
 {
@@ -27,26 +28,51 @@ public class CosmosDbInitializer
     public async Task EnsureCreatedAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "Ensuring Cosmos database '{DatabaseName}' exists at {Endpoint}",
+            "Ensuring Cosmos database '{DatabaseName}' exists at {Endpoint} (shared throughput {Throughput} RU/s)",
             _options.DatabaseName,
-            _options.Endpoint);
+            _options.Endpoint,
+            _options.DatabaseThroughput);
 
-        var databaseResponse = await _cosmosClient
-            .CreateDatabaseIfNotExistsAsync(_options.DatabaseName, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            var databaseResponse = await CreateDatabaseAsync(cancellationToken).ConfigureAwait(false);
+            var database = databaseResponse.Database;
 
-        var database = databaseResponse.Database;
+            await EnsureContainerAsync(database, _options.Containers.Users, "/id", cancellationToken)
+                .ConfigureAwait(false);
+            await EnsureContainerAsync(database, _options.Containers.UserLists, "/ownerId", cancellationToken)
+                .ConfigureAwait(false);
+            await EnsureContainerAsync(database, _options.Containers.Entities, "/id", cancellationToken)
+                .ConfigureAwait(false);
+            await EnsureContainerAsync(database, _options.Containers.System, "/id", cancellationToken)
+                .ConfigureAwait(false);
 
-        await EnsureContainerAsync(database, _options.Containers.Users, "/id", cancellationToken)
-            .ConfigureAwait(false);
-        await EnsureContainerAsync(database, _options.Containers.UserLists, "/ownerId", cancellationToken)
-            .ConfigureAwait(false);
-        await EnsureContainerAsync(database, _options.Containers.Entities, "/id", cancellationToken)
-            .ConfigureAwait(false);
-        await EnsureContainerAsync(database, _options.Containers.System, "/id", cancellationToken)
-            .ConfigureAwait(false);
+            _logger.LogInformation("Cosmos database and containers are ready.");
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest && ex.SubStatusCode == 1028)
+        {
+            throw new InvalidOperationException(
+                "Cosmos account throughput limit exceeded while creating containers. " +
+                "Use shared database throughput (CosmosDb__DatabaseThroughput) and ensure existing containers " +
+                "are not each provisioned at 400 RU/s. See https://aka.ms/cosmos-tp-limit",
+                ex);
+        }
+    }
 
-        _logger.LogInformation("Cosmos database and containers are ready.");
+    private Task<DatabaseResponse> CreateDatabaseAsync(CancellationToken cancellationToken)
+    {
+        // Shared DB throughput lets all containers draw from one pool (avoids 4×400 RU/s).
+        if (_options.DatabaseThroughput > 0)
+        {
+            return _cosmosClient.CreateDatabaseIfNotExistsAsync(
+                _options.DatabaseName,
+                throughput: _options.DatabaseThroughput,
+                cancellationToken: cancellationToken);
+        }
+
+        return _cosmosClient.CreateDatabaseIfNotExistsAsync(
+            _options.DatabaseName,
+            cancellationToken: cancellationToken);
     }
 
     private async Task EnsureContainerAsync(
@@ -55,6 +81,7 @@ public class CosmosDbInitializer
         string partitionKeyPath,
         CancellationToken cancellationToken)
     {
+        // No per-container throughput: containers share the database RU/s when configured.
         var response = await database
             .CreateContainerIfNotExistsAsync(
                 new ContainerProperties
