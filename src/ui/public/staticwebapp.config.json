@@ -4,6 +4,7 @@
     "exclude": [
       "/assets/*",
       "/embed/*",
+      "/.well-known/*",
       "/*.{js,css,png,ico,svg,webp,woff,woff2,ttf,map,json}"
     ]
   }
