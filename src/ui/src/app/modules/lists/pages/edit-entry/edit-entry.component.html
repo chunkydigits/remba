@@ -1,11 +1,11 @@
 <app-page-template [title]="(entry$ | async)?.name || 'Item'">
   <a
     pageHeaderEnd
-    mat-button
-    type="button"
+    mat-icon-button
     [routerLink]="['/lists', (listId$ | async)]"
+    aria-label="Back to list"
   >
-    Back to list
+    <mat-icon>arrow_back</mat-icon>
   </a>
 
   @if (list$ | async; as list) {
@@ -31,6 +31,54 @@
             </div>
           }
         </dl>
+
+        @if (showWatchProviders(list.entityType)) {
+          <section class="entry-detail__watch" aria-label="Where to watch">
+            <h2 class="entry-detail__watch-title">
+              Where to watch
+              @if (entry.watchProvidersRegion) {
+                <span class="entry-detail__watch-region">({{ entry.watchProvidersRegion }})</span>
+              }
+            </h2>
+
+            @if (entry.watchProviders?.length) {
+              <ul class="entry-detail__watch-list">
+                @for (provider of entry.watchProviders; track provider.providerId + provider.offerType) {
+                  <li class="entry-detail__watch-item">
+                    @if (provider.logoUrl) {
+                      <img
+                        class="entry-detail__watch-logo"
+                        [src]="provider.logoUrl"
+                        [alt]="provider.name"
+                        loading="lazy"
+                      />
+                    }
+                    <span class="entry-detail__watch-name">{{ provider.name }}</span>
+                  </li>
+                }
+              </ul>
+              @if (entry.watchProvidersLink) {
+                <a
+                  class="entry-detail__watch-more"
+                  [href]="entry.watchProvidersLink"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  See all options
+                </a>
+              }
+            } @else {
+              <p class="entry-detail__watch-empty">No streaming platforms found for this region.</p>
+            }
+
+            <p class="entry-detail__watch-attribution">
+              Streaming data by
+              <a href="https://www.justwatch.com" target="_blank" rel="noopener noreferrer">JustWatch</a>
+              via
+              <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>.
+            </p>
+          </section>
+        }
 
         <form class="entry-detail__form" [formGroup]="form" (ngSubmit)="onSave()">
           @if (detailFields$ | async; as fields) {

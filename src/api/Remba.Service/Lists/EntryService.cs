@@ -15,6 +15,7 @@ public class EntryService : IEntryService
     private readonly IEntryRepository _entryRepository;
     private readonly IEntityRepository _entityRepository;
     private readonly IEntityLookupService _entityLookupService;
+    private readonly ITmdbWatchProviderService _tmdbWatchProviderService;
     private readonly IListShareService _listShareService;
     private readonly IUserService _userService;
     private readonly ILogger<EntryService> _logger;
@@ -23,6 +24,7 @@ public class EntryService : IEntryService
         IEntryRepository entryRepository,
         IEntityRepository entityRepository,
         IEntityLookupService entityLookupService,
+        ITmdbWatchProviderService tmdbWatchProviderService,
         IListShareService listShareService,
         IUserService userService,
         ILogger<EntryService> logger)
@@ -30,6 +32,8 @@ public class EntryService : IEntryService
         _entryRepository = entryRepository ?? throw new ArgumentNullException(nameof(entryRepository));
         _entityRepository = entityRepository ?? throw new ArgumentNullException(nameof(entityRepository));
         _entityLookupService = entityLookupService ?? throw new ArgumentNullException(nameof(entityLookupService));
+        _tmdbWatchProviderService = tmdbWatchProviderService
+            ?? throw new ArgumentNullException(nameof(tmdbWatchProviderService));
         _listShareService = listShareService ?? throw new ArgumentNullException(nameof(listShareService));
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -111,6 +115,18 @@ public class EntryService : IEntryService
 
         var actor = await _userService.GetByIdAsync(ownerId, cancellationToken).ConfigureAwait(false);
 
+        if (isWatchable)
+        {
+            entity = await EnsureWatchProvidersAsync(
+                    entity,
+                    list.Configuration.EntityType,
+                    NormaliseOptional(identifierType),
+                    NormaliseOptional(identifierValue),
+                    refresh: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         var entry = await _entryRepository
             .CreateAsync(
                 new EntryDbo
@@ -136,6 +152,10 @@ public class EntryService : IEntryService
                     Visited = isCountry ? request.Visited ?? false : request.Visited,
                     Seen = seen,
                     SeenAt = seenAt,
+                    WatchProviders = CloneWatchProviders(entity.WatchProviders),
+                    WatchProvidersRegion = entity.WatchProvidersRegion,
+                    WatchProvidersLink = entity.WatchProvidersLink,
+                    WatchProvidersFetchedAt = entity.WatchProvidersFetchedAt,
                     Order = order,
                     Attributes = CloneAttributes(request.Attributes),
                     Added = now,
@@ -250,13 +270,34 @@ public class EntryService : IEntryService
         CancellationToken cancellationToken = default)
     {
         var access = await RequireReadableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
-        var listOwnerId = access.List.OwnerId;
+        var list = access.List;
+        var listOwnerId = list.OwnerId;
         var entry = await _entryRepository.GetByIdAsync(listOwnerId, entryId, cancellationToken).ConfigureAwait(false);
         if (entry is null
             || !string.Equals(entry.ListId, listId, StringComparison.Ordinal)
             || entry.Deleted is not null)
         {
             return null;
+        }
+
+        if (IsWatchableEntityType(list.Configuration.EntityType)
+            && !string.IsNullOrWhiteSpace(entry.EntityId))
+        {
+            var entity = await _entityRepository.GetByIdAsync(entry.EntityId, cancellationToken).ConfigureAwait(false);
+            if (entity is not null)
+            {
+                entity = await EnsureWatchProvidersAsync(
+                        entity,
+                        list.Configuration.EntityType,
+                        entry.IdentifierType,
+                        entry.IdentifierValue,
+                        refresh: true,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                ApplyWatchProvidersToEntry(entry, entity);
+                entry = await _entryRepository.UpdateAsync(entry, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         return MapToDto(entry);
@@ -898,6 +939,123 @@ public class EntryService : IEntryService
             .ToDictionary(pair => pair.Key.Trim(), pair => pair.Value, StringComparer.Ordinal);
     }
 
+    private async Task<EntityDbo> EnsureWatchProvidersAsync(
+        EntityDbo entity,
+        string? entityType,
+        string? identifierType,
+        string? identifierValue,
+        bool refresh,
+        CancellationToken cancellationToken)
+    {
+        if (!IsWatchableEntityType(entityType))
+        {
+            return entity;
+        }
+
+        if (!_tmdbWatchProviderService.IsConfigured)
+        {
+            _logger.LogWarning(
+                "Skipping watch-provider enrichment for entity {EntityId}: Tmdb:ApiKey is not configured.",
+                entity.Id);
+            return entity;
+        }
+
+        var imdbId = ResolveImdbId(entity, identifierType, identifierValue);
+        if (string.IsNullOrWhiteSpace(imdbId))
+        {
+            _logger.LogWarning(
+                "Skipping watch-provider enrichment for entity {EntityId}: no IMDb id on entry/entity.",
+                entity.Id);
+            return entity;
+        }
+
+        if (!refresh
+            && entity.WatchProvidersFetchedAt is not null
+            && string.Equals(
+                entity.WatchProvidersRegion,
+                _tmdbWatchProviderService.DefaultRegion,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug(
+                "Using cached watch providers for entity {EntityId} ({Count} in {Region}, fetched {FetchedAt})",
+                entity.Id,
+                entity.WatchProviders.Count,
+                entity.WatchProvidersRegion,
+                entity.WatchProvidersFetchedAt);
+            return entity;
+        }
+
+        _logger.LogInformation(
+            "Refreshing watch providers for entity {EntityId} (IMDb {ImdbId}, refresh={Refresh})",
+            entity.Id,
+            imdbId,
+            refresh);
+
+        var snapshot = await _tmdbWatchProviderService
+            .GetByImdbIdAsync(entityType!, imdbId, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        if (snapshot is null)
+        {
+            _logger.LogWarning(
+                "Watch-provider refresh returned no snapshot for entity {EntityId} (IMDb {ImdbId})",
+                entity.Id,
+                imdbId);
+            return entity;
+        }
+
+        entity.WatchProviders = snapshot.Providers;
+        entity.WatchProvidersRegion = snapshot.Region;
+        entity.WatchProvidersLink = snapshot.Link;
+        entity.WatchProvidersFetchedAt = snapshot.FetchedAt;
+        entity.Edited = DateTime.UtcNow;
+
+        _logger.LogInformation(
+            "Persisted watch providers for entity {EntityId}: region={Region}, count={Count}, names=[{Names}]",
+            entity.Id,
+            snapshot.Region,
+            snapshot.Providers.Count,
+            string.Join(", ", snapshot.Providers.Select(provider => provider.Name)));
+
+        return await _entityRepository.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? ResolveImdbId(
+        EntityDbo entity,
+        string? identifierType,
+        string? identifierValue)
+    {
+        if (string.Equals(identifierType, EntityIdentifierTypes.ImdbId, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(identifierValue))
+        {
+            return identifierValue.Trim();
+        }
+
+        var fromEntity = entity.Identifiers.FirstOrDefault(item =>
+            string.Equals(item.Type, EntityIdentifierTypes.ImdbId, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(item.Value));
+        return fromEntity?.Value.Trim();
+    }
+
+    private static void ApplyWatchProvidersToEntry(EntryDbo entry, EntityDbo entity)
+    {
+        entry.WatchProviders = CloneWatchProviders(entity.WatchProviders);
+        entry.WatchProvidersRegion = entity.WatchProvidersRegion;
+        entry.WatchProvidersLink = entity.WatchProvidersLink;
+        entry.WatchProvidersFetchedAt = entity.WatchProvidersFetchedAt;
+    }
+
+    private static List<WatchProviderInfo> CloneWatchProviders(IEnumerable<WatchProviderInfo>? source) =>
+        source?.Select(provider => new WatchProviderInfo
+            {
+                ProviderId = provider.ProviderId,
+                Name = provider.Name,
+                LogoUrl = provider.LogoUrl,
+                OfferType = provider.OfferType,
+                DisplayPriority = provider.DisplayPriority
+            })
+            .ToList()
+        ?? [];
+
     private async Task<EntryDto> MapToDtoAsync(EntryDbo entry, CancellationToken cancellationToken)
     {
         var dto = MapToDto(entry);
@@ -908,7 +1066,8 @@ public class EntryService : IEntryService
 
         var needsIdentifier = string.IsNullOrWhiteSpace(dto.IdentifierValue);
         var needsImage = string.IsNullOrWhiteSpace(dto.ImageUrl);
-        if (!needsIdentifier && !needsImage)
+        var needsWatchProviders = dto.WatchProviders.Count == 0;
+        if (!needsIdentifier && !needsImage && !needsWatchProviders)
         {
             return dto;
         }
@@ -935,6 +1094,14 @@ public class EntryService : IEntryService
             dto.ImageUrl = GetMetadata(entity.Metadata, "imageUrl");
         }
 
+        if (needsWatchProviders && entity.WatchProviders.Count > 0)
+        {
+            dto.WatchProviders = CloneWatchProviders(entity.WatchProviders);
+            dto.WatchProvidersRegion = entity.WatchProvidersRegion;
+            dto.WatchProvidersLink = entity.WatchProvidersLink;
+            dto.WatchProvidersFetchedAt = entity.WatchProvidersFetchedAt;
+        }
+
         return dto;
     }
 
@@ -958,6 +1125,10 @@ public class EntryService : IEntryService
             Visited = entry.Visited,
             Seen = entry.Seen,
             SeenAt = entry.SeenAt,
+            WatchProviders = CloneWatchProviders(entry.WatchProviders),
+            WatchProvidersRegion = entry.WatchProvidersRegion,
+            WatchProvidersLink = entry.WatchProvidersLink,
+            WatchProvidersFetchedAt = entry.WatchProvidersFetchedAt,
             Order = entry.Order,
             Attributes = MapAttributesForDto(entry.Attributes),
             Added = entry.Added,

@@ -15,6 +15,7 @@ public class EntryServiceTests
     private readonly Mock<IEntryRepository> _entryRepository = new();
     private readonly Mock<IEntityRepository> _entityRepository = new();
     private readonly Mock<IEntityLookupService> _lookupService = new();
+    private readonly Mock<ITmdbWatchProviderService> _tmdbWatchProviderService = new();
     private readonly Mock<Remba.Service.Users.IUserService> _userService = new();
 
     private EntryService CreateService()
@@ -30,11 +31,14 @@ public class EntryServiceTests
                 Username = "tester",
                 DisplayName = "Tester"
             });
+        _tmdbWatchProviderService.SetupGet(service => service.IsConfigured).Returns(false);
+        _tmdbWatchProviderService.SetupGet(service => service.DefaultRegion).Returns("GB");
 
         return new(
             _entryRepository.Object,
             _entityRepository.Object,
             _lookupService.Object,
+            _tmdbWatchProviderService.Object,
             _listShareService.Object,
             _userService.Object,
             NullLogger<EntryService>.Instance);

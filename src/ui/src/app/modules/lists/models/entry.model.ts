@@ -1,5 +1,13 @@
 import { EntityIdentifier } from './entity.model';
 
+export interface WatchProvider {
+  providerId: number;
+  name: string;
+  logoUrl?: string | null;
+  offerType: string;
+  displayPriority: number;
+}
+
 export interface ListEntry {
   id: string;
   listId: string;
@@ -18,6 +26,10 @@ export interface ListEntry {
   visited?: boolean | null;
   seen?: boolean | null;
   seenAt?: string | null;
+  watchProviders?: WatchProvider[];
+  watchProvidersRegion?: string | null;
+  watchProvidersLink?: string | null;
+  watchProvidersFetchedAt?: string | null;
   order: number;
   attributes: Record<string, unknown>;
   added: string;

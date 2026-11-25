@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Remba.Model.Entities;
 
 namespace Remba.Model.Lists;
 
@@ -73,6 +74,21 @@ public class EntryDbo
     /// </summary>
     [JsonPropertyName("seenAt")]
     public DateTime? SeenAt { get; set; }
+
+    /// <summary>
+    /// Cached streaming platforms for this title (denormalised from the catalog entity).
+    /// </summary>
+    [JsonPropertyName("watchProviders")]
+    public List<WatchProviderInfo> WatchProviders { get; set; } = [];
+
+    [JsonPropertyName("watchProvidersRegion")]
+    public string? WatchProvidersRegion { get; set; }
+
+    [JsonPropertyName("watchProvidersLink")]
+    public string? WatchProvidersLink { get; set; }
+
+    [JsonPropertyName("watchProvidersFetchedAt")]
+    public DateTime? WatchProvidersFetchedAt { get; set; }
 
     [JsonPropertyName("order")]
     public int Order { get; set; }

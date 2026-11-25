@@ -18,11 +18,13 @@ public static class ServiceConfiguration
     {
         services.Configure<UserCacheOptions>(configuration.GetSection(UserCacheOptions.SectionName));
         services.Configure<OmdbOptions>(configuration.GetSection(OmdbOptions.SectionName));
+        services.Configure<TmdbOptions>(configuration.GetSection(TmdbOptions.SectionName));
         services.Configure<OpenLibraryOptions>(configuration.GetSection(OpenLibraryOptions.SectionName));
         services.Configure<FlagdexOptions>(configuration.GetSection(FlagdexOptions.SectionName));
         services.AddMemoryCache();
 
         var omdb = configuration.GetSection(OmdbOptions.SectionName).Get<OmdbOptions>() ?? new OmdbOptions();
+        var tmdb = configuration.GetSection(TmdbOptions.SectionName).Get<TmdbOptions>() ?? new TmdbOptions();
         var openLibrary = configuration.GetSection(OpenLibraryOptions.SectionName).Get<OpenLibraryOptions>()
                           ?? new OpenLibraryOptions();
         var flagdex = configuration.GetSection(FlagdexOptions.SectionName).Get<FlagdexOptions>()
@@ -33,6 +35,13 @@ public static class ServiceConfiguration
             client.BaseAddress = new Uri(
                 string.IsNullOrWhiteSpace(omdb.BaseUrl) ? "https://www.omdbapi.com/" : omdb.BaseUrl);
         });
+        services.AddHttpClient<TmdbWatchProviderService>(client =>
+        {
+            client.BaseAddress = new Uri(
+                string.IsNullOrWhiteSpace(tmdb.BaseUrl) ? "https://api.themoviedb.org/3/" : tmdb.BaseUrl);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Remba/1.0 (watch-providers)");
+        });
+        services.AddTransient<ITmdbWatchProviderService>(sp => sp.GetRequiredService<TmdbWatchProviderService>());
         services.AddHttpClient<OpenLibraryLookupProvider>(client =>
         {
             client.BaseAddress = new Uri(

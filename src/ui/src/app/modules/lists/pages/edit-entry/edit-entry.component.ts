@@ -218,6 +218,11 @@ export class EditEntryComponent {
     }),
   );
 
+  showWatchProviders(entityType: string | null | undefined): boolean {
+    const type = (entityType || '').trim().toLowerCase();
+    return type === 'film' || type === 'tv';
+  }
+
   identifierLabel(entry: ListEntry): { label: string; value: string } | null {
     const type = (entry.identifierType || '').trim().toLowerCase();
     const value = (entry.identifierValue || '').trim();

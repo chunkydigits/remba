@@ -40,6 +40,14 @@ public class EntryDto
 
     public DateTime? SeenAt { get; set; }
 
+    public List<WatchProviderInfo> WatchProviders { get; set; } = [];
+
+    public string? WatchProvidersRegion { get; set; }
+
+    public string? WatchProvidersLink { get; set; }
+
+    public DateTime? WatchProvidersFetchedAt { get; set; }
+
     public int Order { get; set; }
 
     public Dictionary<string, object?> Attributes { get; set; } = new(StringComparer.Ordinal);

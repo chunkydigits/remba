@@ -22,6 +22,21 @@ public class EntityDbo
     [JsonPropertyName("link")]
     public string? Link { get; set; }
 
+    /// <summary>
+    /// Streaming availability for <see cref="WatchProvidersRegion"/> (TMDB / JustWatch).
+    /// </summary>
+    [JsonPropertyName("watchProviders")]
+    public List<WatchProviderInfo> WatchProviders { get; set; } = [];
+
+    [JsonPropertyName("watchProvidersRegion")]
+    public string? WatchProvidersRegion { get; set; }
+
+    [JsonPropertyName("watchProvidersLink")]
+    public string? WatchProvidersLink { get; set; }
+
+    [JsonPropertyName("watchProvidersFetchedAt")]
+    public DateTime? WatchProvidersFetchedAt { get; set; }
+
     [JsonPropertyName("added")]
     public DateTime Added { get; set; }
 
