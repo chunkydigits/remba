@@ -112,3 +112,75 @@
   padding-top: 0.75rem;
   border-top: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 60%, transparent);
 }
+
+.list-settings__share-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.list-settings__share-banner p {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+}
+
+.list-settings__member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.list-settings__member {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.25rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 50%, transparent);
+}
+
+.list-settings h3 {
+  margin: 0.5rem 0 0;
+  font: var(--mat-sys-title-small);
+}
+
+.list-settings__invite-code {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.list-settings__invite-code-value {
+  font: var(--mat-sys-headline-small);
+  letter-spacing: 0.08em;
+}
+
+.list-settings__invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.list-settings__advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.list-settings__advanced summary {
+  cursor: pointer;
+  font: var(--mat-sys-title-small);
+}
+
+.list-settings__form button mat-icon {
+  margin-right: 0.35rem;
+}

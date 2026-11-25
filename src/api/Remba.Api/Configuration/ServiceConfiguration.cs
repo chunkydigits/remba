@@ -57,6 +57,9 @@ public static class ServiceConfiguration
         services.AddScoped<IEntityTypeService, EntityTypeService>();
         services.AddScoped<IEntryService, EntryService>();
         services.AddScoped<IListService, ListService>();
+        services.AddScoped<IListShareService, ListShareService>();
+        services.AddScoped<IListInviteService, ListInviteService>();
+        services.AddScoped<IShareGroupService, ShareGroupService>();
         services.AddScoped<ISuggestedListService, SuggestedListService>();
         services.AddScoped<IUserService, UserService>();
         return services;

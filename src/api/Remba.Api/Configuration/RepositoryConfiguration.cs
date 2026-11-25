@@ -48,6 +48,9 @@ public static class RepositoryConfiguration
             services.AddSingleton<IEntityTypeRepository, EntityTypeRepository>();
             services.AddSingleton<IEntryRepository, EntryRepository>();
             services.AddSingleton<IListRepository, ListRepository>();
+            services.AddSingleton<IListShareRepository, ListShareRepository>();
+            services.AddSingleton<IListInviteRepository, ListInviteRepository>();
+            services.AddSingleton<IShareGroupRepository, ShareGroupRepository>();
             services.AddSingleton<ISuggestedListRepository, SuggestedListRepository>();
             services.AddSingleton<IUserRepository, UserRepository>();
         }
@@ -57,6 +60,9 @@ public static class RepositoryConfiguration
             services.AddSingleton<IEntityTypeRepository, InMemoryEntityTypeRepository>();
             services.AddSingleton<IEntryRepository, InMemoryEntryRepository>();
             services.AddSingleton<IListRepository, InMemoryListRepository>();
+            services.AddSingleton<IListShareRepository, InMemoryListShareRepository>();
+            services.AddSingleton<IListInviteRepository, InMemoryListInviteRepository>();
+            services.AddSingleton<IShareGroupRepository, InMemoryShareGroupRepository>();
             services.AddSingleton<ISuggestedListRepository, InMemorySuggestedListRepository>();
             services.AddSingleton<IUserRepository, InMemoryUserRepository>();
         }

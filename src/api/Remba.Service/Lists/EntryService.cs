@@ -5,29 +5,33 @@ using Remba.Model.Lists;
 using Remba.Repository.Entities;
 using Remba.Repository.Lists;
 using Remba.Service.Entities;
+using Remba.Service.Users;
 using Remba.Utility;
 
 namespace Remba.Service.Lists;
 
 public class EntryService : IEntryService
 {
-    private readonly IListRepository _listRepository;
     private readonly IEntryRepository _entryRepository;
     private readonly IEntityRepository _entityRepository;
     private readonly IEntityLookupService _entityLookupService;
+    private readonly IListShareService _listShareService;
+    private readonly IUserService _userService;
     private readonly ILogger<EntryService> _logger;
 
     public EntryService(
-        IListRepository listRepository,
         IEntryRepository entryRepository,
         IEntityRepository entityRepository,
         IEntityLookupService entityLookupService,
+        IListShareService listShareService,
+        IUserService userService,
         ILogger<EntryService> logger)
     {
-        _listRepository = listRepository ?? throw new ArgumentNullException(nameof(listRepository));
         _entryRepository = entryRepository ?? throw new ArgumentNullException(nameof(entryRepository));
         _entityRepository = entityRepository ?? throw new ArgumentNullException(nameof(entityRepository));
         _entityLookupService = entityLookupService ?? throw new ArgumentNullException(nameof(entityLookupService));
+        _listShareService = listShareService ?? throw new ArgumentNullException(nameof(listShareService));
+        _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -49,7 +53,9 @@ public class EntryService : IEntryService
             throw new ArgumentException("List id is required.", nameof(listId));
         }
 
-        var list = await RequireOwnedListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var access = await RequireEditableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var list = access.List;
+        var listOwnerId = list.OwnerId;
         var enrichment = await ResolveEnrichmentAsync(list, request, cancellationToken).ConfigureAwait(false);
 
         var name = enrichment.ResolvedName
@@ -71,7 +77,7 @@ public class EntryService : IEntryService
         var now = DateTime.UtcNow;
 
         var entity = await ResolveEntityForCreateAsync(
-                ownerId,
+                listOwnerId,
                 list,
                 name,
                 request,
@@ -81,7 +87,7 @@ public class EntryService : IEntryService
             .ConfigureAwait(false);
 
         var existingEntry = await _entryRepository
-            .FindActiveByEntityAsync(ownerId, listId, entity.Id, cancellationToken)
+            .FindActiveByEntityAsync(listOwnerId, listId, entity.Id, cancellationToken)
             .ConfigureAwait(false);
         if (existingEntry is not null)
         {
@@ -89,7 +95,7 @@ public class EntryService : IEntryService
         }
 
         var order = await _entryRepository
-            .GetNextOrderAsync(ownerId, listId, cancellationToken)
+            .GetNextOrderAsync(listOwnerId, listId, cancellationToken)
             .ConfigureAwait(false);
 
         var isBook = string.Equals(list.Configuration.EntityType, EntityTypes.Book, StringComparison.OrdinalIgnoreCase);
@@ -103,6 +109,8 @@ public class EntryService : IEntryService
         var seen = isWatchable ? request.Seen ?? false : request.Seen;
         var seenAt = ResolveSeenAt(seen, request.SeenAt, existingSeenAt: null, now);
 
+        var actor = await _userService.GetByIdAsync(ownerId, cancellationToken).ConfigureAwait(false);
+
         var entry = await _entryRepository
             .CreateAsync(
                 new EntryDbo
@@ -110,7 +118,7 @@ public class EntryService : IEntryService
                     Id = Guid.NewGuid().ToString("N"),
                     RecordType = ListRecordTypes.Entry,
                     ListId = listId,
-                    OwnerId = ownerId,
+                    OwnerId = listOwnerId,
                     EntityId = entity.Id,
                     IdentifierType = NormaliseOptional(identifierType),
                     IdentifierValue = NormaliseOptional(identifierValue),
@@ -131,6 +139,9 @@ public class EntryService : IEntryService
                     Order = order,
                     Attributes = CloneAttributes(request.Attributes),
                     Added = now,
+                    AddedByUserId = ownerId,
+                    AddedByUsername = actor?.Username,
+                    AddedByDisplayName = actor?.DisplayName,
                     Edited = null,
                     Deleted = null,
                     DeletedByUserId = null
@@ -153,9 +164,10 @@ public class EntryService : IEntryService
         EntryQuery? query = null,
         CancellationToken cancellationToken = default)
     {
-        _ = await RequireOwnedListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var access = await RequireReadableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var listOwnerId = access.List.OwnerId;
         var entries = await _entryRepository
-            .GetByListAsync(ownerId, listId, includeDeleted: false, cancellationToken)
+            .GetByListAsync(listOwnerId, listId, includeDeleted: false, cancellationToken)
             .ConfigureAwait(false);
 
         IEnumerable<EntryDbo> filtered = entries;
@@ -237,8 +249,9 @@ public class EntryService : IEntryService
         string entryId,
         CancellationToken cancellationToken = default)
     {
-        _ = await RequireOwnedListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
-        var entry = await _entryRepository.GetByIdAsync(ownerId, entryId, cancellationToken).ConfigureAwait(false);
+        var access = await RequireReadableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var listOwnerId = access.List.OwnerId;
+        var entry = await _entryRepository.GetByIdAsync(listOwnerId, entryId, cancellationToken).ConfigureAwait(false);
         if (entry is null
             || !string.Equals(entry.ListId, listId, StringComparison.Ordinal)
             || entry.Deleted is not null)
@@ -258,8 +271,9 @@ public class EntryService : IEntryService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        _ = await RequireOwnedListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
-        var entry = await RequireOwnedActiveEntryAsync(ownerId, listId, entryId, cancellationToken)
+        var access = await RequireEditableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var listOwnerId = access.List.OwnerId;
+        var entry = await RequireOwnedActiveEntryAsync(listOwnerId, listId, entryId, cancellationToken)
             .ConfigureAwait(false);
 
         if (request.Name is not null)
@@ -429,9 +443,10 @@ public class EntryService : IEntryService
             throw new ArgumentException("At least one entry id is required.");
         }
 
-        _ = await RequireOwnedListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var access = await RequireEditableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var listOwnerId = access.List.OwnerId;
         var existing = await _entryRepository
-            .GetByListAsync(ownerId, listId, includeDeleted: false, cancellationToken)
+            .GetByListAsync(listOwnerId, listId, includeDeleted: false, cancellationToken)
             .ConfigureAwait(false);
         var byId = existing.ToDictionary(entry => entry.Id, StringComparer.Ordinal);
 
@@ -467,8 +482,9 @@ public class EntryService : IEntryService
         string entryId,
         CancellationToken cancellationToken = default)
     {
-        _ = await RequireOwnedListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
-        var entry = await RequireOwnedActiveEntryAsync(ownerId, listId, entryId, cancellationToken)
+        var access = await RequireEditableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var listOwnerId = access.List.OwnerId;
+        var entry = await RequireOwnedActiveEntryAsync(listOwnerId, listId, entryId, cancellationToken)
             .ConfigureAwait(false);
 
         entry.Deleted = DateTime.UtcNow;
@@ -483,7 +499,7 @@ public class EntryService : IEntryService
             ownerId);
     }
 
-    public Task<IReadOnlyList<string>> GetListIdsContainingAsync(
+    public async Task<IReadOnlyList<string>> GetListIdsContainingAsync(
         string ownerId,
         string? identifierType,
         string? identifierValue,
@@ -493,13 +509,45 @@ public class EntryService : IEntryService
         var type = StringUtilities.NormalizeWhitespace(identifierType);
         var value = StringUtilities.NormalizeWhitespace(identifierValue);
         var resolvedEntityId = StringUtilities.NormalizeWhitespace(entityId);
+        var normalisedType = string.IsNullOrEmpty(type) ? null : type;
+        var normalisedValue = string.IsNullOrEmpty(value) ? null : value;
+        var normalisedEntityId = string.IsNullOrEmpty(resolvedEntityId) ? null : resolvedEntityId;
 
-        return _entryRepository.FindActiveListIdsContainingAsync(
-            ownerId,
-            string.IsNullOrEmpty(type) ? null : type,
-            string.IsNullOrEmpty(value) ? null : value,
-            string.IsNullOrEmpty(resolvedEntityId) ? null : resolvedEntityId,
-            cancellationToken);
+        var listIds = new HashSet<string>(StringComparer.Ordinal);
+
+        var ownedMatches = await _entryRepository
+            .FindActiveListIdsContainingAsync(
+                ownerId,
+                normalisedType,
+                normalisedValue,
+                normalisedEntityId,
+                cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var listId in ownedMatches)
+        {
+            listIds.Add(listId);
+        }
+
+        var shares = await _listShareService
+            .GetSharesForMemberAsync(ownerId, cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var share in shares)
+        {
+            var sharedMatches = await _entryRepository
+                .FindActiveListIdsContainingAsync(
+                    share.ListOwnerId,
+                    normalisedType,
+                    normalisedValue,
+                    normalisedEntityId,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            if (sharedMatches.Contains(share.ListId, StringComparer.Ordinal))
+            {
+                listIds.Add(share.ListId);
+            }
+        }
+
+        return listIds.ToList();
     }
 
     private async Task<EnrichmentFields> ResolveEnrichmentAsync(
@@ -643,18 +691,27 @@ public class EntryService : IEntryService
             .ConfigureAwait(false);
     }
 
-    private async Task<ListDbo> RequireOwnedListAsync(
-        string ownerId,
+    private async Task<ListAccessContext> RequireReadableListAsync(
+        string userId,
+        string listId,
+        CancellationToken cancellationToken) =>
+        await _listShareService.RequireAccessAsync(userId, listId, cancellationToken).ConfigureAwait(false);
+
+    private async Task<ListAccessContext> RequireEditableListAsync(
+        string userId,
         string listId,
         CancellationToken cancellationToken)
     {
-        var list = await _listRepository.GetByIdAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
-        if (list is null)
+        var access = await _listShareService
+            .RequireAccessAsync(userId, listId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!ListShareRoles.CanEditEntries(access.Role))
         {
-            throw new KeyNotFoundException("List was not found.");
+            throw new UnauthorizedAccessException("You do not have permission to edit this list.");
         }
 
-        return list;
+        return access;
     }
 
     private async Task<EntryDbo> RequireOwnedActiveEntryAsync(
@@ -887,6 +944,9 @@ public class EntryService : IEntryService
             Order = entry.Order,
             Attributes = MapAttributesForDto(entry.Attributes),
             Added = entry.Added,
+            AddedByUserId = entry.AddedByUserId,
+            AddedByUsername = entry.AddedByUsername,
+            AddedByDisplayName = entry.AddedByDisplayName,
             Edited = entry.Edited
         };
 

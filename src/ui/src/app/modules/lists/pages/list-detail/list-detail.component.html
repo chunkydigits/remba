@@ -1,12 +1,14 @@
 <app-page-template [title]="(list$ | async)?.name || 'List details'">
   <div pageHeaderEnd class="list-detail__header-actions">
-    <a
-      mat-icon-button
-      [routerLink]="['/lists', (listId$ | async), 'add']"
-      aria-label="Add item"
-    >
-      <mat-icon>add</mat-icon>
-    </a>
+    @if ((list$ | async)?.myRole !== 'viewer') {
+      <a
+        mat-icon-button
+        [routerLink]="['/lists', (listId$ | async), 'add']"
+        aria-label="Add item"
+      >
+        <mat-icon>add</mat-icon>
+      </a>
+    }
     <button
       mat-icon-button
       type="button"
@@ -154,6 +156,8 @@
               (saveDetails)="onSaveDetails($event)"
               (saveViewSettings)="onSaveViewSettings($event)"
               (deleteList)="onDeleteList()"
+              (sharesChanged)="onSharesChanged()"
+              (leaveList)="onLeaveList()"
             ></app-list-settings>
           }
         }

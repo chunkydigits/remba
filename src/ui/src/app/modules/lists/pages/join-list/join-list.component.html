@@ -1,0 +1,31 @@
+<app-page-template title="Join a list">
+  <section class="join-list">
+    <p class="join-list__hint">
+      Enter the invite code someone shared with you. Codes are single-use and stop working after
+      they’re redeemed.
+    </p>
+
+    <form class="join-list__form" [formGroup]="form" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="outline">
+        <mat-label>Invite code</mat-label>
+        <input
+          matInput
+          formControlName="code"
+          placeholder="ABCD-EFGH"
+          autocomplete="off"
+          autocapitalize="characters"
+        />
+      </mat-form-field>
+
+      <button mat-flat-button color="primary" type="submit" [disabled]="busy">
+        Join list
+      </button>
+    </form>
+
+    @if (error) {
+      <p class="join-list__error">{{ error }}</p>
+    }
+
+    <a mat-button routerLink="/lists">Back to my lists</a>
+  </section>
+</app-page-template>

@@ -11,18 +11,34 @@ namespace Remba.Service.Tests.Lists;
 
 public class EntryServiceTests
 {
-    private readonly Mock<IListRepository> _listRepository = new();
+    private readonly Mock<IListShareService> _listShareService = new();
     private readonly Mock<IEntryRepository> _entryRepository = new();
     private readonly Mock<IEntityRepository> _entityRepository = new();
     private readonly Mock<IEntityLookupService> _lookupService = new();
+    private readonly Mock<Remba.Service.Users.IUserService> _userService = new();
 
-    private EntryService CreateService() =>
-        new(
-            _listRepository.Object,
+    private EntryService CreateService()
+    {
+        _listShareService
+            .Setup(service => service.GetSharesForMemberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _userService
+            .Setup(service => service.GetByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string userId, CancellationToken _) => new Remba.Model.Users.UserDto
+            {
+                Id = userId,
+                Username = "tester",
+                DisplayName = "Tester"
+            });
+
+        return new(
             _entryRepository.Object,
             _entityRepository.Object,
             _lookupService.Object,
+            _listShareService.Object,
+            _userService.Object,
             NullLogger<EntryService>.Instance);
+    }
 
     private static ListDbo SampleList(string entityType = "film") =>
         new()
@@ -35,12 +51,24 @@ public class EntryServiceTests
             ViewSettings = new ListViewSettingsDbo()
         };
 
+    private void SetupListAccess(ListDbo list, string role = ListShareRoles.Owner)
+    {
+        var access = new ListAccessContext { List = list, Role = role };
+        _listShareService
+            .Setup(service => service.RequireAccessAsync(
+                "user1",
+                list.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(access);
+        _listShareService
+            .Setup(service => service.GetSharesForMemberAsync("user1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+    }
+
     [Fact]
     public async Task CreateAsync_WhenValid_ThenShouldCreateEntityAndEntry()
     {
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList());
+        SetupListAccess(SampleList());
         _entityRepository
             .Setup(repository => repository.CreateAsync(It.IsAny<EntityDbo>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EntityDbo entity, CancellationToken _) => entity);
@@ -70,9 +98,7 @@ public class EntryServiceTests
     [Fact]
     public async Task CreateAsync_WhenImdbIdentifier_ThenShouldEnrichDirectorAndActors()
     {
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList("film"));
+        SetupListAccess(SampleList("film"));
         _lookupService
             .Setup(service => service.GetByIdentifierAsync(
                 "film",
@@ -132,9 +158,7 @@ public class EntryServiceTests
     [Fact]
     public async Task CreateAsync_WhenBook_ThenShouldDefaultReadFalse()
     {
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList("book"));
+        SetupListAccess(SampleList("book"));
         _entityRepository
             .Setup(repository => repository.CreateAsync(It.IsAny<EntityDbo>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EntityDbo entity, CancellationToken _) => entity);
@@ -164,9 +188,7 @@ public class EntryServiceTests
     [Fact]
     public async Task CreateAsync_WhenCountry_ThenShouldDefaultVisitedFalse()
     {
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList("country"));
+        SetupListAccess(SampleList("country"));
         _entityRepository
             .Setup(repository => repository.CreateAsync(It.IsAny<EntityDbo>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EntityDbo entity, CancellationToken _) => entity);
@@ -196,9 +218,7 @@ public class EntryServiceTests
     [Fact]
     public async Task CreateAsync_WhenFilm_ThenShouldDefaultSeenFalse()
     {
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList("film"));
+        SetupListAccess(SampleList("film"));
         _entityRepository
             .Setup(repository => repository.CreateAsync(It.IsAny<EntityDbo>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((EntityDbo entity, CancellationToken _) => entity);
@@ -240,10 +260,7 @@ public class EntryServiceTests
             Order = 1,
             Added = DateTime.UtcNow.AddDays(-1)
         };
-
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList("film"));
+        SetupListAccess(SampleList("film"));
         _entryRepository
             .Setup(repository => repository.GetByIdAsync("user1", "entry1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing);
@@ -266,9 +283,7 @@ public class EntryServiceTests
     [Fact]
     public async Task GetByListAsync_WhenQueryProvided_ThenShouldFilterAndSort()
     {
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList("book"));
+        SetupListAccess(SampleList("book"));
         _entryRepository
             .Setup(repository => repository.GetByListAsync("user1", "list1", false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(
@@ -326,9 +341,7 @@ public class EntryServiceTests
     [Fact]
     public async Task SoftDeleteAsync_WhenValid_ThenShouldMarkDeleted()
     {
-        _listRepository
-            .Setup(repository => repository.GetByIdAsync("user1", "list1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SampleList());
+        SetupListAccess(SampleList());
         _entryRepository
             .Setup(repository => repository.GetByIdAsync("user1", "entry1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(

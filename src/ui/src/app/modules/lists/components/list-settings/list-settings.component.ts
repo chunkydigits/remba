@@ -2,12 +2,16 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, injec
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MaterialModule } from '../../../../core/material.module';
 import { EntityTypeSelectComponent } from '../entity-type-select/entity-type-select.component';
+import { ListService } from '../../services/list.service';
 import {
   LIST_ATTRIBUTE_TYPE_OPTIONS,
   ListAttributeDefinition,
   ListAttributeType,
   ListDetail,
   ListFieldKey,
+  ListInvite,
+  ListShareMember,
+  ShareGroup,
   UpdateListRequest,
   UpdateListViewSettingsRequest,
   availableFieldsForEntityType,
@@ -22,6 +26,7 @@ import {
 })
 export class ListSettingsComponent implements OnChanges {
   private readonly formBuilder = inject(FormBuilder);
+  private readonly listService = inject(ListService);
 
   @Input({ required: true }) list!: ListDetail;
   @Input() saveSuccess = false;
@@ -31,6 +36,8 @@ export class ListSettingsComponent implements OnChanges {
   @Output() readonly saveDetails = new EventEmitter<UpdateListRequest>();
   @Output() readonly saveViewSettings = new EventEmitter<UpdateListViewSettingsRequest>();
   @Output() readonly deleteList = new EventEmitter<void>();
+  @Output() readonly sharesChanged = new EventEmitter<void>();
+  @Output() readonly leaveList = new EventEmitter<void>();
 
   readonly attributeTypeOptions = LIST_ATTRIBUTE_TYPE_OPTIONS;
 
@@ -52,8 +59,42 @@ export class ListSettingsComponent implements OnChanges {
     type: ['text' as ListAttributeType, Validators.required],
   });
 
+  readonly inviteForm = this.formBuilder.nonNullable.group({
+    role: ['editor' as 'editor' | 'viewer', Validators.required],
+  });
+
+  readonly shareForm = this.formBuilder.nonNullable.group({
+    usernames: ['', [Validators.maxLength(400)]],
+    role: ['editor' as 'editor' | 'viewer', Validators.required],
+    shareLabel: ['', [Validators.maxLength(80)]],
+    shareGroupId: [''],
+  });
+
+  readonly groupForm = this.formBuilder.nonNullable.group({
+    name: ['', [Validators.required, Validators.maxLength(80)]],
+    usernames: ['', [Validators.required, Validators.maxLength(400)]],
+  });
+
   visibleFieldKeys: ListFieldKey[] = ['name'];
   customProperties: ListAttributeDefinition[] = [];
+  members: ListShareMember[] = [];
+  invites: ListInvite[] = [];
+  shareGroups: ShareGroup[] = [];
+  shareError = '';
+  shareSuccess = '';
+  inviteError = '';
+  inviteSuccess = '';
+  lastCreatedInvite: ListInvite | null = null;
+  groupError = '';
+  sharingBusy = false;
+
+  get isOwner(): boolean {
+    return this.list?.isOwned !== false && (this.list?.myRole || 'owner') === 'owner';
+  }
+
+  get isSharedMember(): boolean {
+    return this.list?.isOwned === false;
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['list'] || !this.list) {
@@ -77,6 +118,256 @@ export class ListSettingsComponent implements OnChanges {
       saved && saved.length > 0 ? [...saved] : defaultVisibleFields(this.list.entityType);
 
     this.customProperties = (this.list.attributes || []).map((attribute) => ({ ...attribute }));
+    this.members = [...(this.list.members || [])];
+
+    if (this.isOwner) {
+      this.loadShareGroups();
+      this.loadInvites();
+    }
+  }
+
+  onCreateAndShareInvite(): void {
+    if (!this.isOwner || this.sharingBusy) {
+      return;
+    }
+
+    this.sharingBusy = true;
+    this.inviteError = '';
+    this.inviteSuccess = '';
+    const role = this.inviteForm.controls.role.value;
+
+    this.listService.createInvite(this.list.id, { role }).subscribe({
+      next: (invite) => {
+        this.invites = [invite, ...this.invites];
+        this.lastCreatedInvite = invite;
+        this.sharingBusy = false;
+        this.inviteSuccess = `Code ${invite.code} ready to share.`;
+        void this.openShareSheet(invite);
+      },
+      error: (error) => {
+        this.sharingBusy = false;
+        this.inviteError = error?.error?.message || 'Unable to create invite code.';
+      },
+    });
+  }
+
+  onShareExistingInvite(invite: ListInvite): void {
+    if (invite.isUsed) {
+      return;
+    }
+
+    void this.openShareSheet(invite);
+  }
+
+  onCopyInvite(invite: ListInvite): void {
+    const text = this.buildShareText(invite);
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(text).then(() => {
+        this.inviteSuccess = 'Copied share message.';
+      });
+      return;
+    }
+
+    this.inviteSuccess = text;
+  }
+
+  onDeleteInvite(invite: ListInvite): void {
+    if (!this.isOwner || this.sharingBusy || invite.isUsed) {
+      return;
+    }
+
+    this.sharingBusy = true;
+    this.inviteError = '';
+    this.listService.deleteInvite(this.list.id, invite.id).subscribe({
+      next: () => {
+        this.invites = this.invites.filter((item) => item.id !== invite.id);
+        if (this.lastCreatedInvite?.id === invite.id) {
+          this.lastCreatedInvite = null;
+        }
+        this.sharingBusy = false;
+      },
+      error: (error) => {
+        this.sharingBusy = false;
+        this.inviteError = error?.error?.message || 'Unable to delete invite code.';
+      },
+    });
+  }
+
+  onShare(): void {
+    if (!this.isOwner || this.sharingBusy) {
+      return;
+    }
+
+    const value = this.shareForm.getRawValue();
+    const usernames = this.parseUsernames(value.usernames);
+    if (usernames.length === 0 && !value.shareGroupId) {
+      this.shareForm.controls.usernames.setErrors({ required: true });
+      this.shareForm.markAllAsTouched();
+      return;
+    }
+
+    this.sharingBusy = true;
+    this.shareError = '';
+    this.shareSuccess = '';
+    this.listService
+      .share(this.list.id, {
+        usernames,
+        shareGroupId: value.shareGroupId || undefined,
+        role: value.role,
+        shareLabel: value.shareLabel.trim() || undefined,
+      })
+      .subscribe({
+        next: (members) => {
+          this.members = members;
+          this.sharingBusy = false;
+          this.shareSuccess = 'Shared.';
+          this.shareForm.patchValue({ usernames: '', shareGroupId: '' });
+          this.sharesChanged.emit();
+        },
+        error: (error) => {
+          this.sharingBusy = false;
+          this.shareError = error?.error?.message || 'Unable to share list.';
+        },
+      });
+  }
+
+  onUnshare(member: ListShareMember): void {
+    if (!this.isOwner || this.sharingBusy) {
+      return;
+    }
+
+    this.sharingBusy = true;
+    this.shareError = '';
+    this.listService.unshare(this.list.id, member.userId).subscribe({
+      next: () => {
+        this.members = this.members.filter((item) => item.userId !== member.userId);
+        this.sharingBusy = false;
+        this.sharesChanged.emit();
+      },
+      error: (error) => {
+        this.sharingBusy = false;
+        this.shareError = error?.error?.message || 'Unable to remove share.';
+      },
+    });
+  }
+
+  onCreateGroup(): void {
+    if (!this.isOwner || this.groupForm.invalid || this.sharingBusy) {
+      this.groupForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.groupForm.getRawValue();
+    const usernames = this.parseUsernames(value.usernames);
+    if (usernames.length === 0) {
+      this.groupForm.controls.usernames.setErrors({ required: true });
+      return;
+    }
+
+    this.sharingBusy = true;
+    this.groupError = '';
+    this.listService
+      .createShareGroup({ name: value.name.trim(), usernames })
+      .subscribe({
+        next: (group) => {
+          this.shareGroups = [...this.shareGroups, group].sort((a, b) =>
+            a.name.localeCompare(b.name),
+          );
+          this.sharingBusy = false;
+          this.groupForm.reset({ name: '', usernames: '' });
+          this.shareForm.patchValue({ shareGroupId: group.id, shareLabel: group.name });
+        },
+        error: (error) => {
+          this.sharingBusy = false;
+          this.groupError = error?.error?.message || 'Unable to create group.';
+        },
+      });
+  }
+
+  onDeleteGroup(group: ShareGroup): void {
+    if (!this.isOwner || this.sharingBusy) {
+      return;
+    }
+
+    this.sharingBusy = true;
+    this.groupError = '';
+    this.listService.deleteShareGroup(group.id).subscribe({
+      next: () => {
+        this.shareGroups = this.shareGroups.filter((item) => item.id !== group.id);
+        if (this.shareForm.controls.shareGroupId.value === group.id) {
+          this.shareForm.patchValue({ shareGroupId: '' });
+        }
+        this.sharingBusy = false;
+      },
+      error: (error) => {
+        this.sharingBusy = false;
+        this.groupError = error?.error?.message || 'Unable to delete group.';
+      },
+    });
+  }
+
+  onLeave(): void {
+    this.leaveList.emit();
+  }
+
+  private loadShareGroups(): void {
+    this.listService.getShareGroups().subscribe({
+      next: (groups) => {
+        this.shareGroups = groups;
+      },
+      error: () => {
+        this.shareGroups = [];
+      },
+    });
+  }
+
+  private loadInvites(): void {
+    this.listService.getInvites(this.list.id).subscribe({
+      next: (invites) => {
+        this.invites = invites;
+      },
+      error: () => {
+        this.invites = [];
+      },
+    });
+  }
+
+  private async openShareSheet(invite: ListInvite): Promise<void> {
+    const text = this.buildShareText(invite);
+    const shareData: ShareData = {
+      title: `Join “${this.list.name}” on Remba`,
+      text,
+      url: this.buildJoinUrl(invite.code),
+    };
+
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // User cancelled or share unavailable — fall through to SMS/copy.
+    }
+
+    const smsBody = encodeURIComponent(text);
+    window.location.href = `sms:?&body=${smsBody}`;
+  }
+
+  private buildShareText(invite: ListInvite): string {
+    const joinUrl = this.buildJoinUrl(invite.code);
+    return `Join my Remba list “${this.list.name}” with code ${invite.code}. Sign in, then open ${joinUrl}`;
+  }
+
+  private buildJoinUrl(code: string): string {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}/lists/join?code=${encodeURIComponent(code)}`;
+  }
+
+  private parseUsernames(value: string): string[] {
+    return value
+      .split(/[,;\s]+/)
+      .map((item) => item.trim().replace(/^@/, ''))
+      .filter(Boolean);
   }
 
   availableFields() {

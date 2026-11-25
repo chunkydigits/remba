@@ -184,6 +184,7 @@ export class ListDetailComponent {
     'visited',
     'seen',
     'added',
+    'addedBy',
   ]);
 
   readonly sortFields$ = this.entityType$.pipe(
@@ -441,6 +442,40 @@ export class ListDetailComponent {
     this.deleteRequests.next();
   }
 
+  onSharesChanged(): void {
+    this.listReload$.next();
+  }
+
+  onLeaveList(): void {
+    const listId = this.route.snapshot.paramMap.get('listId');
+    if (!listId) {
+      return;
+    }
+
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        width: '22rem',
+        data: {
+          title: 'Leave shared list?',
+          message: 'You will lose access until someone shares it with you again.',
+          confirmLabel: 'Leave',
+          cancelLabel: 'Stay',
+        },
+      })
+      .afterClosed()
+      .pipe(filter((confirmed): confirmed is true => confirmed === true))
+      .subscribe(() => {
+        this.listService.leave(listId).subscribe({
+          next: () => {
+            void this.router.navigate(['/lists']);
+          },
+          error: (error) => {
+            this.saveError = error?.error?.message || 'Unable to leave list.';
+          },
+        });
+      });
+  }
+
   onDeleteEntry(entry: ListEntry): void {
     this.dialog
       .open(ConfirmDialogComponent, {
@@ -631,6 +666,12 @@ export class ListDetailComponent {
         return entry.seenAt ? `Seen · ${this.formatSeenAt(entry.seenAt)}` : 'Seen';
       case 'added':
         return entry.added ? new Date(entry.added).toLocaleDateString() : '';
+      case 'addedBy':
+        return (
+          entry.addedByDisplayName?.trim() ||
+          entry.addedByUsername?.trim() ||
+          ''
+        );
       default:
         return '';
     }

@@ -1,3 +1,40 @@
+export type ListShareRole = 'owner' | 'editor' | 'viewer' | string;
+
+export interface ListShareMember {
+  userId: string;
+  username: string;
+  displayName: string;
+  role: ListShareRole;
+  shareLabel?: string | null;
+  added: string;
+}
+
+export interface ShareListRequest {
+  usernames?: string[];
+  shareGroupId?: string;
+  role?: 'editor' | 'viewer' | string;
+  shareLabel?: string;
+}
+
+export interface ShareGroupMember {
+  userId: string;
+  username: string;
+  displayName: string;
+}
+
+export interface ShareGroup {
+  id: string;
+  name: string;
+  members: ShareGroupMember[];
+  added: string;
+  edited: string | null;
+}
+
+export interface CreateShareGroupRequest {
+  name: string;
+  usernames?: string[];
+}
+
 export interface ListSummary {
   id: string;
   name: string;
@@ -5,6 +42,9 @@ export interface ListSummary {
   visibility: 'private' | 'public' | string;
   entityType?: string | null;
   referralLink?: string | null;
+  myRole?: ListShareRole;
+  isOwned?: boolean;
+  shareLabel?: string | null;
   added: string;
   edited: string | null;
 }
@@ -36,6 +76,10 @@ export interface ListDetail {
   referralLink?: string | null;
   attributes?: ListAttributeDefinition[];
   viewSettings: ListViewSettings;
+  myRole?: ListShareRole;
+  isOwned?: boolean;
+  shareLabel?: string | null;
+  members?: ListShareMember[];
   added: string;
   edited: string | null;
 }
@@ -88,7 +132,36 @@ export type ListFieldKey =
   | 'read'
   | 'visited'
   | 'seen'
-  | 'added';
+  | 'added'
+  | 'addedBy';
+
+export interface ListInvite {
+  id: string;
+  listId: string;
+  listName: string;
+  code: string;
+  role: ListShareRole;
+  added: string;
+  isUsed: boolean;
+  usedAt?: string | null;
+  usedByUserId?: string | null;
+  usedByUsername?: string | null;
+  usedByDisplayName?: string | null;
+}
+
+export interface CreateListInviteRequest {
+  role?: 'editor' | 'viewer' | string;
+}
+
+export interface RedeemListInviteRequest {
+  code: string;
+}
+
+export interface RedeemListInviteResponse {
+  listId: string;
+  listName: string;
+  role: ListShareRole;
+}
 
 export interface ListFieldOption {
   key: ListFieldKey;
@@ -107,6 +180,7 @@ export const LIST_FIELD_OPTIONS: ListFieldOption[] = [
   { key: 'visited', label: 'Visited' },
   { key: 'seen', label: 'Seen' },
   { key: 'added', label: 'Date added' },
+  { key: 'addedBy', label: 'Added by' },
 ];
 
 export function defaultVisibleFields(entityType: string | null | undefined): ListFieldKey[] {
@@ -127,7 +201,7 @@ export function defaultVisibleFields(entityType: string | null | undefined): Lis
 
 export function availableFieldsForEntityType(entityType: string | null | undefined): ListFieldOption[] {
   const type = (entityType || '').trim().toLowerCase();
-  const keys = new Set<ListFieldKey>(['name', 'link', 'added']);
+  const keys = new Set<ListFieldKey>(['name', 'link', 'added', 'addedBy']);
 
   if (type === 'book') {
     keys.add('author');

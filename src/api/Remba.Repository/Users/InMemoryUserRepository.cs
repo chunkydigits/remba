@@ -28,6 +28,13 @@ public class InMemoryUserRepository : IUserRepository
         return GetByIdAsync(userId, cancellationToken);
     }
 
+    public Task<UserDbo?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        var match = _usersById.Values.FirstOrDefault(user =>
+            string.Equals(user.Username, username, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(Clone(match));
+    }
+
     public Task<UserDbo> CreateAsync(UserDbo user, CancellationToken cancellationToken = default)
     {
         if (StringUtilities.IsNullOrWhiteSpace(user.Id))

@@ -2,6 +2,7 @@
   <section class="my-lists">
     <div class="my-lists__actions">
       <a mat-flat-button color="primary" routerLink="/lists/new">Create list</a>
+      <a mat-stroked-button routerLink="/lists/join">Join with code</a>
     </div>
 
     @if (lists$ | async; as lists) {
@@ -14,7 +15,15 @@
               <a class="my-lists__item" [routerLink]="['/lists', list.id]">
                 <span class="my-lists__name">{{ list.name }}</span>
                 <span class="my-lists__meta">
-                  {{ list.visibility }}
+                  @if (list.isOwned === false) {
+                    Shared
+                    @if (list.shareLabel) {
+                      · {{ list.shareLabel }}
+                    }
+                    · {{ list.myRole || 'member' }}
+                  } @else {
+                    {{ list.visibility }}
+                  }
                   @if (list.entityType) {
                     · {{ list.entityType }}
                   }

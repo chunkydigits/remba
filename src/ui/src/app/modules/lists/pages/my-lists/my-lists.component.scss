@@ -6,6 +6,8 @@
 
 .my-lists__actions {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   justify-content: stretch;
 }
 
@@ -59,6 +61,7 @@
 
 @media (min-width: 768px) {
   .my-lists__actions {
+    flex-direction: row;
     justify-content: flex-start;
   }
 

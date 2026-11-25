@@ -7,6 +7,9 @@ on:
   push:
     branches:
       - 'main'
+    paths:
+      - 'src/api/**'
+      - '.github/workflows/main_rm-lasp-prod.yml'
   workflow_dispatch:
 
 jobs:

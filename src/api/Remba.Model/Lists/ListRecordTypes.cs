@@ -5,6 +5,12 @@ public static class ListRecordTypes
     public const string List = "list";
 
     public const string Entry = "entry";
+
+    public const string ListShare = "list-share";
+
+    public const string ShareGroup = "share-group";
+
+    public const string ListInvite = "list-invite";
 }
 
 public static class ListVisibility

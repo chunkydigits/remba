@@ -46,6 +46,12 @@ public class EntryDto
 
     public DateTime Added { get; set; }
 
+    public string AddedByUserId { get; set; } = string.Empty;
+
+    public string? AddedByUsername { get; set; }
+
+    public string? AddedByDisplayName { get; set; }
+
     public DateTime? Edited { get; set; }
 }
 

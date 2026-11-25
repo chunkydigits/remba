@@ -21,6 +21,9 @@ export interface ListEntry {
   order: number;
   attributes: Record<string, unknown>;
   added: string;
+  addedByUserId?: string;
+  addedByUsername?: string | null;
+  addedByDisplayName?: string | null;
   edited: string | null;
 }
 

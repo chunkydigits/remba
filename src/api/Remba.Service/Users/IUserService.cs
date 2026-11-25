@@ -13,6 +13,8 @@ public interface IUserService
 
     Task<UserDto?> GetByIdAsync(string userId, CancellationToken cancellationToken = default);
 
+    Task<UserDto?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default);
+
     Task<UserDto> UpdateCurrentUserAsync(
         string userId,
         UpdateUserRequest request,

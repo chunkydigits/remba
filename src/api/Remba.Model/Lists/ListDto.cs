@@ -20,6 +20,17 @@ public class ListDto
 
     public ListViewSettingsDto ViewSettings { get; set; } = new();
 
+    /// <summary>
+    /// Caller's role on this list: owner, editor, or viewer.
+    /// </summary>
+    public string MyRole { get; set; } = ListShareRoles.Owner;
+
+    public bool IsOwned { get; set; } = true;
+
+    public string? ShareLabel { get; set; }
+
+    public List<ListShareMemberDto> Members { get; set; } = [];
+
     public DateTime Added { get; set; }
 
     public DateTime? Edited { get; set; }
@@ -62,6 +73,12 @@ public class ListSummaryDto
     public string? EntityType { get; set; }
 
     public string? ReferralLink { get; set; }
+
+    public string MyRole { get; set; } = ListShareRoles.Owner;
+
+    public bool IsOwned { get; set; } = true;
+
+    public string? ShareLabel { get; set; }
 
     public DateTime Added { get; set; }
 

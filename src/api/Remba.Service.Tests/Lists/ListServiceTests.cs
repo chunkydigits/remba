@@ -9,9 +9,50 @@ namespace Remba.Service.Tests.Lists;
 public class ListServiceTests
 {
     private readonly Mock<IListRepository> _repository = new();
+    private readonly Mock<IListShareService> _shareService = new();
 
-    private ListService CreateService() =>
-        new(_repository.Object, NullLogger<ListService>.Instance);
+    private ListService CreateService()
+    {
+        _shareService
+            .Setup(service => service.GetMembersAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _shareService
+            .Setup(service => service.GetSharesForMemberAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        _shareService
+            .Setup(service => service.RemoveAllSharesForListAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _shareService
+            .Setup(service => service.SyncListNameAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _shareService
+            .Setup(service => service.RequireAccessAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string userId, string listId, CancellationToken cancellationToken) =>
+            {
+                var list = _repository.Object.GetByIdAsync(userId, listId, cancellationToken).GetAwaiter().GetResult();
+                if (list is null)
+                {
+                    throw new KeyNotFoundException("List was not found.");
+                }
+
+                return new ListAccessContext { List = list, Role = ListShareRoles.Owner };
+            });
+
+        return new ListService(_repository.Object, _shareService.Object, NullLogger<ListService>.Instance);
+    }
 
     [Fact]
     public async Task CreateAsync_WhenValid_ThenShouldCreatePrivateListByDefault()
@@ -30,6 +71,8 @@ public class ListServiceTests
         Assert.Equal("Weekend picks", result.Description);
         Assert.Equal(ListVisibility.Private, result.Visibility);
         Assert.Equal("manual", result.ViewSettings.SortBy);
+        Assert.True(result.IsOwned);
+        Assert.Equal(ListShareRoles.Owner, result.MyRole);
         _repository.Verify(
             repository => repository.CreateAsync(
                 It.Is<ListDbo>(list =>
@@ -230,6 +273,9 @@ public class ListServiceTests
 
         _repository.Verify(
             repository => repository.DeleteAsync("user1", "list1", It.IsAny<CancellationToken>()),
+            Times.Once);
+        _shareService.Verify(
+            service => service.RemoveAllSharesForListAsync("user1", "list1", It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }

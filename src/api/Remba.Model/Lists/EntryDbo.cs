@@ -83,6 +83,18 @@ public class EntryDbo
     [JsonPropertyName("added")]
     public DateTime Added { get; set; }
 
+    /// <summary>
+    /// Remba user who added this entry to the list (may differ from list owner on shared lists).
+    /// </summary>
+    [JsonPropertyName("addedByUserId")]
+    public string AddedByUserId { get; set; } = string.Empty;
+
+    [JsonPropertyName("addedByUsername")]
+    public string? AddedByUsername { get; set; }
+
+    [JsonPropertyName("addedByDisplayName")]
+    public string? AddedByDisplayName { get; set; }
+
     [JsonPropertyName("edited")]
     public DateTime? Edited { get; set; }
 

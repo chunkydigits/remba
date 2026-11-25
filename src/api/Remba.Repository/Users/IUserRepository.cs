@@ -8,6 +8,8 @@ public interface IUserRepository
 
     Task<UserDbo?> GetByAuth0SubjectAsync(string auth0Subject, CancellationToken cancellationToken = default);
 
+    Task<UserDbo?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default);
+
     Task<UserDbo> CreateAsync(UserDbo user, CancellationToken cancellationToken = default);
 
     Task<UserDbo> UpdateAsync(UserDbo user, CancellationToken cancellationToken = default);

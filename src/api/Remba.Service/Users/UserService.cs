@@ -116,6 +116,19 @@ public class UserService : IUserService
         return user is null ? null : MapToDto(user);
     }
 
+    public async Task<UserDto?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        if (StringUtilities.IsNullOrWhiteSpace(username))
+        {
+            return null;
+        }
+
+        var user = await _userRepository
+            .GetByUsernameAsync(username.Trim(), cancellationToken)
+            .ConfigureAwait(false);
+        return user is null ? null : MapToDto(user);
+    }
+
     public async Task<UserDto> UpdateCurrentUserAsync(
         string userId,
         UpdateUserRequest request,

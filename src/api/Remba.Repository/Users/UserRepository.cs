@@ -71,6 +71,35 @@ public class UserRepository : IUserRepository
         return null;
     }
 
+    public async Task<UserDbo?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
+    {
+        if (StringUtilities.IsNullOrWhiteSpace(username))
+        {
+            return null;
+        }
+
+        const string queryText = """
+            SELECT * FROM c
+            WHERE LOWER(c.username) = @username
+            """;
+
+        var query = new QueryDefinition(queryText)
+            .WithParameter("@username", username.Trim().ToLowerInvariant());
+
+        using var iterator = _container.GetItemQueryIterator<UserDbo>(query);
+        while (iterator.HasMoreResults)
+        {
+            var page = await iterator.ReadNextAsync(cancellationToken).ConfigureAwait(false);
+            var match = page.Resource.FirstOrDefault();
+            if (match is not null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
     public async Task<UserDbo> CreateAsync(UserDbo user, CancellationToken cancellationToken = default)
     {
         ValidateForWrite(user);
