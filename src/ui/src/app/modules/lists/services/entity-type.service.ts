@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -8,8 +8,9 @@ import { CreateEntityTypeRequest, EntityType } from '../models/entity-type.model
   providedIn: 'root',
 })
 export class EntityTypeService {
-  private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/entity-types`;
+
+  constructor(private readonly http: HttpClient) {}
 
   getAvailable(): Observable<EntityType[]> {
     return this.http.get<EntityType[]>(this.baseUrl);

@@ -5,11 +5,13 @@ import { EntityTypeSelectComponent } from '../entity-type-select/entity-type-sel
 import { ListService } from '../../services/list.service';
 import {
   LIST_ATTRIBUTE_TYPE_OPTIONS,
+  LIST_MEMBER_ROLE_OPTIONS,
   ListAttributeDefinition,
   ListAttributeType,
   ListDetail,
   ListFieldKey,
   ListInvite,
+  ListMemberRole,
   ListShareMember,
   ShareGroup,
   UpdateListRequest,
@@ -40,6 +42,7 @@ export class ListSettingsComponent implements OnChanges {
   @Output() readonly leaveList = new EventEmitter<void>();
 
   readonly attributeTypeOptions = LIST_ATTRIBUTE_TYPE_OPTIONS;
+  readonly memberRoleOptions = LIST_MEMBER_ROLE_OPTIONS;
 
   readonly detailsForm = this.formBuilder.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -60,12 +63,12 @@ export class ListSettingsComponent implements OnChanges {
   });
 
   readonly inviteForm = this.formBuilder.nonNullable.group({
-    role: ['editor' as 'editor' | 'viewer', Validators.required],
+    role: ['editor' as ListMemberRole, Validators.required],
   });
 
   readonly shareForm = this.formBuilder.nonNullable.group({
     usernames: ['', [Validators.maxLength(400)]],
-    role: ['editor' as 'editor' | 'viewer', Validators.required],
+    role: ['editor' as ListMemberRole, Validators.required],
     shareLabel: ['', [Validators.maxLength(80)]],
     shareGroupId: [''],
   });
@@ -87,6 +90,13 @@ export class ListSettingsComponent implements OnChanges {
   lastCreatedInvite: ListInvite | null = null;
   groupError = '';
   sharingBusy = false;
+  selectedTabIndex = 0;
+  showPropertyForm = false;
+  showUsedInvites = false;
+
+  private detailsBaseline = '';
+  private propertiesBaseline = '';
+  private displayBaseline = '';
 
   get isOwner(): boolean {
     return this.list?.isOwned !== false && (this.list?.myRole || 'owner') === 'owner';
@@ -94,6 +104,26 @@ export class ListSettingsComponent implements OnChanges {
 
   get isSharedMember(): boolean {
     return this.list?.isOwned === false;
+  }
+
+  get detailsDirty(): boolean {
+    return this.serialiseDetails() !== this.detailsBaseline;
+  }
+
+  get propertiesDirty(): boolean {
+    return this.serialiseProperties() !== this.propertiesBaseline;
+  }
+
+  get displayDirty(): boolean {
+    return this.serialiseDisplay() !== this.displayBaseline;
+  }
+
+  get activeInvites(): ListInvite[] {
+    return this.invites.filter((invite) => !invite.isUsed);
+  }
+
+  get usedInvites(): ListInvite[] {
+    return this.invites.filter((invite) => invite.isUsed);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -119,6 +149,9 @@ export class ListSettingsComponent implements OnChanges {
 
     this.customProperties = (this.list.attributes || []).map((attribute) => ({ ...attribute }));
     this.members = [...(this.list.members || [])];
+    this.showPropertyForm = false;
+    this.propertyForm.reset({ name: '', description: '', type: 'text' });
+    this.captureBaselines();
 
     if (this.isOwner) {
       this.loadShareGroups();
@@ -231,6 +264,26 @@ export class ListSettingsComponent implements OnChanges {
       });
   }
 
+  onMemberRoleChange(member: ListShareMember, role: string): void {
+    if (!this.isOwner || this.sharingBusy || member.role === role) {
+      return;
+    }
+
+    this.sharingBusy = true;
+    this.shareError = '';
+    this.listService.updateMemberRole(this.list.id, member.userId, { role }).subscribe({
+      next: (members) => {
+        this.members = members;
+        this.sharingBusy = false;
+        this.sharesChanged.emit();
+      },
+      error: (error) => {
+        this.sharingBusy = false;
+        this.shareError = error?.error?.message || 'Unable to update access level.';
+      },
+    });
+  }
+
   onUnshare(member: ListShareMember): void {
     if (!this.isOwner || this.sharingBusy) {
       return;
@@ -308,6 +361,15 @@ export class ListSettingsComponent implements OnChanges {
 
   onLeave(): void {
     this.leaveList.emit();
+  }
+
+  onShowPropertyForm(): void {
+    this.showPropertyForm = true;
+  }
+
+  onCancelPropertyForm(): void {
+    this.showPropertyForm = false;
+    this.propertyForm.reset({ name: '', description: '', type: 'text' });
   }
 
   private loadShareGroups(): void {
@@ -407,6 +469,10 @@ export class ListSettingsComponent implements OnChanges {
     return this.attributeTypeOptions.find((option) => option.value === type)?.label || type;
   }
 
+  roleLabel(role: string): string {
+    return this.memberRoleOptions.find((option) => option.value === role)?.label || role;
+  }
+
   onAddProperty(): void {
     if (this.propertyForm.invalid) {
       this.propertyForm.markAllAsTouched();
@@ -446,6 +512,7 @@ export class ListSettingsComponent implements OnChanges {
       description: '',
       type: 'text',
     });
+    this.showPropertyForm = false;
   }
 
   onRemoveProperty(key: string): void {
@@ -454,12 +521,26 @@ export class ListSettingsComponent implements OnChanges {
   }
 
   onSaveDetails(): void {
-    if (this.detailsForm.invalid) {
+    if (this.detailsForm.invalid || !this.detailsDirty) {
       this.detailsForm.markAllAsTouched();
       return;
     }
 
     const value = this.detailsForm.getRawValue();
+    this.saveDetails.emit({
+      name: value.name,
+      description: value.description,
+      referralLink: value.referralLink.trim(),
+      entityType: value.entityType || undefined,
+      visibility: value.visibility,
+    });
+  }
+
+  onSaveProperties(): void {
+    if (!this.propertiesDirty) {
+      return;
+    }
+
     for (const property of this.customProperties) {
       if (property.key && !this.visibleFieldKeys.includes(property.key as ListFieldKey)) {
         this.visibleFieldKeys = [...this.visibleFieldKeys, property.key as ListFieldKey];
@@ -467,11 +548,6 @@ export class ListSettingsComponent implements OnChanges {
     }
 
     this.saveDetails.emit({
-      name: value.name,
-      description: value.description,
-      referralLink: value.referralLink.trim(),
-      entityType: value.entityType || undefined,
-      visibility: value.visibility,
       attributes: this.customProperties.map((property) => ({
         key: property.key,
         name: property.name,
@@ -485,6 +561,10 @@ export class ListSettingsComponent implements OnChanges {
   }
 
   onSaveViewSettings(): void {
+    if (!this.displayDirty && !this.propertiesDirty) {
+      return;
+    }
+
     const value = this.viewForm.getRawValue();
     const fields = this.visibleFieldKeys.includes('name')
       ? this.visibleFieldKeys
@@ -498,6 +578,34 @@ export class ListSettingsComponent implements OnChanges {
 
   onDelete(): void {
     this.deleteList.emit();
+  }
+
+  private captureBaselines(): void {
+    this.detailsBaseline = this.serialiseDetails();
+    this.propertiesBaseline = this.serialiseProperties();
+    this.displayBaseline = this.serialiseDisplay();
+  }
+
+  private serialiseDetails(): string {
+    const value = this.detailsForm.getRawValue();
+    return JSON.stringify({
+      name: value.name,
+      description: value.description,
+      referralLink: value.referralLink,
+      entityType: value.entityType,
+      visibility: value.visibility,
+    });
+  }
+
+  private serialiseProperties(): string {
+    return JSON.stringify(this.customProperties);
+  }
+
+  private serialiseDisplay(): string {
+    return JSON.stringify({
+      viewMode: this.viewForm.controls.viewMode.value,
+      visibleFields: this.visibleFieldKeys,
+    });
   }
 
   private slugify(value: string): string {

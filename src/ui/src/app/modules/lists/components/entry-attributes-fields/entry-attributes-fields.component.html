@@ -17,7 +17,7 @@
               </div>
             }
             @case ('number') {
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>{{ definition.name }}</mat-label>
                 <input matInput type="number" [formControlName]="definition.key" />
                 @if (definition.description) {
@@ -26,7 +26,7 @@
               </mat-form-field>
             }
             @case ('url') {
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>{{ definition.name }}</mat-label>
                 <input
                   matInput
@@ -41,7 +41,7 @@
               </mat-form-field>
             }
             @case ('list') {
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>{{ definition.name }}</mat-label>
                 <mat-chip-grid #chipGrid [attr.aria-label]="definition.name">
                   @for (item of listItems(definition.key); track item) {
@@ -65,7 +65,7 @@
               </mat-form-field>
             }
             @default {
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>{{ definition.name }}</mat-label>
                 <input matInput [formControlName]="definition.key" autocomplete="off" />
                 @if (definition.description) {

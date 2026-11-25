@@ -28,7 +28,7 @@ public class ShareListRequest
     public string? ShareGroupId { get; set; }
 
     /// <summary>
-    /// editor or viewer. Defaults to editor.
+    /// editor, adder, or viewer. Defaults to editor.
     /// </summary>
     public string? Role { get; set; }
 
@@ -36,6 +36,14 @@ public class ShareListRequest
     /// Optional label for this sharing circle (e.g. "Us").
     /// </summary>
     public string? ShareLabel { get; set; }
+}
+
+public class UpdateListShareRoleRequest
+{
+    /// <summary>
+    /// editor, adder, or viewer.
+    /// </summary>
+    public string Role { get; set; } = ListShareRoles.Editor;
 }
 
 public class ShareGroupDto

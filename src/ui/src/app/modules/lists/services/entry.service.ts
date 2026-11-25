@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -14,7 +14,7 @@ import {
   providedIn: 'root',
 })
 export class EntryService {
-  private readonly http = inject(HttpClient);
+  constructor(private readonly http: HttpClient) {}
 
   private baseUrl(listId: string): string {
     return `${environment.apiBaseUrl}/api/lists/${listId}/entries`;

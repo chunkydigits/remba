@@ -3,6 +3,7 @@ import { MyListsComponent } from './pages/my-lists/my-lists.component';
 import { CreateListComponent } from './pages/create-list/create-list.component';
 import { JoinListComponent } from './pages/join-list/join-list.component';
 import { ListDetailComponent } from './pages/list-detail/list-detail.component';
+import { ListSettingsPageComponent } from './pages/list-settings-page/list-settings-page.component';
 import { AddEntryComponent } from './pages/add-entry/add-entry.component';
 import { EditEntryComponent } from './pages/edit-entry/edit-entry.component';
 
@@ -22,6 +23,10 @@ export const LISTS_ROUTES: Routes = [
   {
     path: ':listId/add',
     component: AddEntryComponent,
+  },
+  {
+    path: ':listId/settings',
+    component: ListSettingsPageComponent,
   },
   {
     path: ':listId/entries/:entryId',

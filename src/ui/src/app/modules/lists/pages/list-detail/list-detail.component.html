@@ -24,6 +24,17 @@
     @if (toolbarMode !== 'closed') {
       <section class="list-detail__toolbar" aria-label="List tools">
         @if (toolbarMode === 'menu') {
+          <div class="list-detail__menu-header">
+            <span class="list-detail__panel-title">Tools</span>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Close panel"
+              (click)="closeToolbar()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
           <div class="list-detail__actions">
             <button type="button" class="list-detail__action" aria-label="Search" (click)="openMode('search')">
               <span class="list-detail__action-icon" aria-hidden="true">
@@ -55,12 +66,16 @@
               </span>
               <span class="list-detail__action-label">Clear</span>
             </button>
-            <button type="button" class="list-detail__action" aria-label="Settings" (click)="openMode('settings')">
+            <a
+              class="list-detail__action"
+              aria-label="Settings"
+              [routerLink]="['/lists', list.id, 'settings']"
+            >
               <span class="list-detail__action-icon" aria-hidden="true">
                 <mat-icon>settings</mat-icon>
               </span>
               <span class="list-detail__action-label">Settings</span>
-            </button>
+            </a>
           </div>
         } @else {
           <div class="list-detail__panel-header">
@@ -78,11 +93,17 @@
                 @case ('sort') {
                   Sort
                 }
-                @case ('settings') {
-                  Settings
-                }
               }
             </span>
+            <button
+              mat-icon-button
+              type="button"
+              class="list-detail__panel-close"
+              aria-label="Close panel"
+              (click)="closeToolbar()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
           </div>
 
           @if (toolbarMode === 'search') {
@@ -145,20 +166,6 @@
 
               <button mat-flat-button color="primary" type="submit">Apply</button>
             </form>
-          }
-
-          @if (toolbarMode === 'settings') {
-            <app-list-settings
-              [list]="list"
-              [saveSuccess]="saveSuccess"
-              [saveError]="saveError"
-              [deleteError]="deleteError"
-              (saveDetails)="onSaveDetails($event)"
-              (saveViewSettings)="onSaveViewSettings($event)"
-              (deleteList)="onDeleteList()"
-              (sharesChanged)="onSharesChanged()"
-              (leaveList)="onLeaveList()"
-            ></app-list-settings>
           }
         }
       </section>
@@ -374,9 +381,6 @@
     <p>Loading list…</p>
   }
 
-  @if (saveDetailsResult$ | async) {}
-  @if (saveViewSettingsResult$ | async) {}
-  @if (deleteResult$ | async) {}
   @if (deleteEntryResult$ | async) {}
   @if (toggleReadResult$ | async) {}
   @if (toggleVisitedResult$ | async) {}

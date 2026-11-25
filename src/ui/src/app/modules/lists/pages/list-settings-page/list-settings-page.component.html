@@ -1,0 +1,32 @@
+<app-page-template title="List settings">
+  <a
+    pageHeaderEnd
+    mat-icon-button
+    [routerLink]="['/lists', (listId$ | async)]"
+    aria-label="Back to list"
+  >
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+
+  @if (list$ | async; as list) {
+    <p class="list-settings-page__eyebrow">{{ list.name }}</p>
+
+    <app-list-settings
+      [list]="list"
+      [saveSuccess]="saveSuccess"
+      [saveError]="saveError"
+      [deleteError]="deleteError"
+      (saveDetails)="onSaveDetails($event)"
+      (saveViewSettings)="onSaveViewSettings($event)"
+      (deleteList)="onDeleteList()"
+      (sharesChanged)="onSharesChanged()"
+      (leaveList)="onLeaveList()"
+    ></app-list-settings>
+  } @else {
+    <p class="list-settings-page__loading">Loading settings…</p>
+  }
+
+  @if (saveDetailsResult$ | async) {}
+  @if (saveViewSettingsResult$ | async) {}
+  @if (deleteResult$ | async) {}
+</app-page-template>

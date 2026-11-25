@@ -1,0 +1,16 @@
+:host {
+  display: block;
+  max-width: 40rem;
+}
+
+.list-settings-page__eyebrow {
+  margin: 0 0 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-title-medium);
+}
+
+.list-settings-page__loading {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}

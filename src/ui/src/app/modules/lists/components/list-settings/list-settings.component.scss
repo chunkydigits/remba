@@ -2,22 +2,30 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0.75rem 0 1rem;
+  padding: 0.25rem 0 1rem;
 }
 
-.list-settings h2 {
-  margin: 0;
-  font: var(--mat-sys-title-medium);
+.list-settings__tabs {
+  margin: 0 -0.25rem;
+}
+
+.list-settings__tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 0.25rem 0.25rem;
 }
 
 .list-settings__form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.5rem;
 }
 
-.list-settings__form mat-form-field {
+.list-settings__form mat-form-field,
+.list-settings__form app-entity-type-select {
   width: 100%;
+  margin-block: 0.35rem 0.65rem;
 }
 
 .list-settings__fields {
@@ -87,7 +95,48 @@
 .list-settings__property-form {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 1.5rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--mat-sys-outline-variant) 70%, transparent);
+  border-radius: 0.5rem;
+}
+
+.list-settings__property-form mat-form-field {
+  width: 100%;
+  margin-block: 0.35rem 0.65rem;
+}
+
+.list-settings__property-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.list-settings__add-property {
+  align-self: flex-start;
+}
+
+.list-settings__add-property mat-icon {
+  margin-right: 0.25rem;
+}
+
+.list-settings__used-toggle {
+  align-self: flex-start;
+  padding-left: 0;
+}
+
+.list-settings__member-list--muted .list-settings__property-name,
+.list-settings__member-list--muted .list-settings__property-meta {
+  opacity: 0.7;
+}
+
+.list-settings__member--role {
+  flex-wrap: wrap;
+}
+
+.list-settings__role-select {
+  width: 8.5rem;
+  flex: 0 0 auto;
 }
 
 .list-settings__fields legend {

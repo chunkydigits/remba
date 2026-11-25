@@ -6,330 +6,460 @@
         @if (list.shareLabel) {
           as <strong>{{ list.shareLabel }}</strong>
         }
-        · your role is <strong>{{ list.myRole }}</strong>.
+        · your role is <strong>{{ roleLabel(list.myRole || '') || list.myRole }}</strong>.
       </p>
       <button mat-stroked-button type="button" color="warn" (click)="onLeave()">Leave list</button>
     </div>
   }
 
   @if (isOwner) {
-  <h2>List details</h2>
-  <form class="list-settings__form" [formGroup]="detailsForm" (ngSubmit)="onSaveDetails()">
-    <mat-form-field appearance="outline">
-      <mat-label>Name</mat-label>
-      <input matInput formControlName="name" />
-    </mat-form-field>
+    <mat-tab-group
+      class="list-settings__tabs"
+      [(selectedIndex)]="selectedTabIndex"
+      animationDuration="150ms"
+      [dynamicHeight]="true"
+      [mat-stretch-tabs]="false"
+      mat-align-tabs="start"
+    >
+      <mat-tab label="Details">
+        <div class="list-settings__tab">
+          <form class="list-settings__form" [formGroup]="detailsForm" (ngSubmit)="onSaveDetails()">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Name</mat-label>
+              <input matInput formControlName="name" />
+            </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Description</mat-label>
-      <textarea matInput rows="3" formControlName="description"></textarea>
-    </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Description</mat-label>
+              <textarea matInput rows="3" formControlName="description"></textarea>
+            </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Referral link</mat-label>
-      <input matInput type="url" formControlName="referralLink" placeholder="https://" autocomplete="off" />
-      <mat-hint>Where this collection’s inspiration came from (set by the save plugin)</mat-hint>
-    </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Referral link</mat-label>
+              <input
+                matInput
+                type="url"
+                formControlName="referralLink"
+                placeholder="https://"
+                autocomplete="off"
+              />
+              <mat-hint>Where this collection’s inspiration came from (set by the save plugin)</mat-hint>
+            </mat-form-field>
 
-    <app-entity-type-select formControlName="entityType"></app-entity-type-select>
+            <app-entity-type-select formControlName="entityType"></app-entity-type-select>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Visibility</mat-label>
-      <mat-select formControlName="visibility">
-        <mat-option value="private">Private</mat-option>
-        <mat-option value="public">Public</mat-option>
-      </mat-select>
-    </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Visibility</mat-label>
+              <mat-select formControlName="visibility">
+                <mat-option value="private">Private</mat-option>
+                <mat-option value="public">Public</mat-option>
+              </mat-select>
+            </mat-form-field>
 
-    <div class="list-settings__properties">
-      <h3>Custom properties</h3>
-      <p class="list-settings__hint">
-        Extra fields for items on this list. Click Add property, then Save details to keep them.
-        They are saved with your list, not the shared template.
-      </p>
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              [disabled]="detailsForm.invalid || !detailsDirty"
+            >
+              Save details
+            </button>
+          </form>
 
-      @if (customProperties.length > 0) {
-        <ul class="list-settings__property-list">
-          @for (property of customProperties; track property.key) {
-            <li class="list-settings__property">
-              <div class="list-settings__property-text">
-                <span class="list-settings__property-name">{{ property.name }}</span>
-                <span class="list-settings__property-meta">
-                  {{ attributeTypeLabel(property.type) }}
-                  @if (property.description) {
-                    · {{ property.description }}
-                  }
-                </span>
-              </div>
-              <button
-                mat-icon-button
-                type="button"
-                aria-label="Remove property"
-                (click)="onRemoveProperty(property.key)"
-              >
-                <mat-icon>close</mat-icon>
-              </button>
-            </li>
+          @if (saveSuccess && selectedTabIndex === 0) {
+            <p class="list-settings__success">Saved.</p>
           }
-        </ul>
-      }
-
-      <div class="list-settings__property-form" [formGroup]="propertyForm">
-        <mat-form-field appearance="outline">
-          <mat-label>Property name</mat-label>
-          <input matInput formControlName="name" />
-          @if (propertyForm.controls.name.hasError('duplicate')) {
-            <mat-error>That property already exists</mat-error>
+          @if (saveError && selectedTabIndex === 0) {
+            <p class="list-settings__error">{{ saveError }}</p>
           }
-        </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Description (optional)</mat-label>
-          <input matInput formControlName="description" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Type</mat-label>
-          <mat-select formControlName="type">
-            @for (option of attributeTypeOptions; track option.value) {
-              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          <div class="list-settings__danger">
+            <button mat-stroked-button color="warn" type="button" (click)="onDelete()">
+              Delete list
+            </button>
+            @if (deleteError) {
+              <p class="list-settings__error">{{ deleteError }}</p>
             }
-          </mat-select>
-        </mat-form-field>
+          </div>
+        </div>
+      </mat-tab>
 
-        <button mat-stroked-button type="button" (click)="onAddProperty()">Add property</button>
-      </div>
-    </div>
+      <mat-tab label="Properties">
+        <div class="list-settings__tab">
+          <p class="list-settings__hint">
+            Extra fields for items on this list. They are saved with your list, not the shared
+            template.
+          </p>
 
-    <button mat-flat-button color="primary" type="submit">Save details</button>
-  </form>
-
-  <h2>Display</h2>
-  <form class="list-settings__form" [formGroup]="viewForm" (ngSubmit)="onSaveViewSettings()">
-    <mat-form-field appearance="outline">
-      <mat-label>View mode</mat-label>
-      <mat-select formControlName="viewMode">
-        <mat-option value="list">List</mat-option>
-        <mat-option value="grid">Grid</mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <fieldset class="list-settings__fields">
-      <legend>Visible fields</legend>
-      @for (field of availableFields(); track field.key) {
-        <mat-checkbox
-          [checked]="isFieldVisible(field.key)"
-          [disabled]="field.key === 'name'"
-          (change)="onToggleField(field.key, $event.checked)"
-          color="primary"
-        >
-          {{ field.label }}
-        </mat-checkbox>
-      }
-    </fieldset>
-
-    <button mat-stroked-button type="submit">Save display settings</button>
-  </form>
-
-  @if (saveSuccess) {
-    <p class="list-settings__success">Saved.</p>
-  }
-  @if (saveError) {
-    <p class="list-settings__error">{{ saveError }}</p>
-  }
-
-  <h2>Sharing</h2>
-  <p class="list-settings__hint">
-    Create a one-time code, then share it via your messaging app. Each code works for a single
-    person and is burnt once used.
-  </p>
-
-  <form class="list-settings__form" [formGroup]="inviteForm" (ngSubmit)="onCreateAndShareInvite()">
-    <mat-form-field appearance="outline">
-      <mat-label>Role for invitee</mat-label>
-      <mat-select formControlName="role">
-        <mat-option value="editor">Editor (can add and edit items)</mat-option>
-        <mat-option value="viewer">Viewer (read only)</mat-option>
-      </mat-select>
-    </mat-form-field>
-    <button mat-flat-button color="primary" type="submit" [disabled]="sharingBusy">
-      <mat-icon>ios_share</mat-icon>
-      Share
-    </button>
-  </form>
-
-  @if (lastCreatedInvite && !lastCreatedInvite.isUsed) {
-    <div class="list-settings__invite-code">
-      <span class="list-settings__invite-code-value">{{ lastCreatedInvite.code }}</span>
-      <div class="list-settings__invite-actions">
-        <button mat-stroked-button type="button" (click)="onShareExistingInvite(lastCreatedInvite)">
-          Share again
-        </button>
-        <button mat-stroked-button type="button" (click)="onCopyInvite(lastCreatedInvite)">
-          Copy
-        </button>
-      </div>
-    </div>
-  }
-
-  @if (inviteSuccess) {
-    <p class="list-settings__success">{{ inviteSuccess }}</p>
-  }
-  @if (inviteError) {
-    <p class="list-settings__error">{{ inviteError }}</p>
-  }
-
-  <h3>Invite codes</h3>
-  @if (invites.length === 0) {
-    <p class="list-settings__hint">No invite codes yet.</p>
-  } @else {
-    <ul class="list-settings__member-list">
-      @for (invite of invites; track invite.id) {
-        <li class="list-settings__member">
-          <div class="list-settings__property-text">
-            <span class="list-settings__property-name">{{ invite.code }}</span>
-            <span class="list-settings__property-meta">
-              {{ invite.role }}
-              @if (invite.isUsed) {
-                · used by
-                {{ invite.usedByDisplayName || invite.usedByUsername || 'someone' }}
-              } @else {
-                · unused
+          @if (customProperties.length > 0) {
+            <ul class="list-settings__property-list">
+              @for (property of customProperties; track property.key) {
+                <li class="list-settings__property">
+                  <div class="list-settings__property-text">
+                    <span class="list-settings__property-name">{{ property.name }}</span>
+                    <span class="list-settings__property-meta">
+                      {{ attributeTypeLabel(property.type) }}
+                      @if (property.description) {
+                        · {{ property.description }}
+                      }
+                    </span>
+                  </div>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Remove property"
+                    (click)="onRemoveProperty(property.key)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
               }
-            </span>
-          </div>
-          @if (!invite.isUsed) {
-            <button
-              mat-icon-button
-              type="button"
-              aria-label="Share code"
-              [disabled]="sharingBusy"
-              (click)="onShareExistingInvite(invite)"
-            >
-              <mat-icon>ios_share</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              type="button"
-              aria-label="Delete unused code"
-              [disabled]="sharingBusy"
-              (click)="onDeleteInvite(invite)"
-            >
-              <mat-icon>close</mat-icon>
-            </button>
+            </ul>
+          } @else if (!showPropertyForm) {
+            <p class="list-settings__hint">No custom properties yet.</p>
           }
-        </li>
-      }
-    </ul>
-  }
 
-  @if (members.length > 0) {
-    <h3>People with access</h3>
-    <ul class="list-settings__member-list">
-      @for (member of members; track member.userId) {
-        <li class="list-settings__member">
-          <div class="list-settings__property-text">
-            <span class="list-settings__property-name">
-              {{ member.displayName || member.username }}
-            </span>
-            <span class="list-settings__property-meta">
-              {{ '@' + member.username }} · {{ member.role }}
-            </span>
-          </div>
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Remove share"
-            [disabled]="sharingBusy"
-            (click)="onUnshare(member)"
-          >
-            <mat-icon>close</mat-icon>
-          </button>
-        </li>
-      }
-    </ul>
-  }
+          @if (!showPropertyForm) {
+            <button
+              mat-stroked-button
+              type="button"
+              class="list-settings__add-property"
+              (click)="onShowPropertyForm()"
+            >
+              <mat-icon>add</mat-icon>
+              Add property
+            </button>
+          } @else {
+            <div class="list-settings__property-form" [formGroup]="propertyForm">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Property name</mat-label>
+                <input matInput formControlName="name" />
+                @if (propertyForm.controls.name.hasError('duplicate')) {
+                  <mat-error>That property already exists</mat-error>
+                }
+              </mat-form-field>
 
-  <details class="list-settings__advanced">
-    <summary>Add by username (optional)</summary>
-    <p class="list-settings__hint">
-      If you already know their Remba username, you can add them directly.
-    </p>
-    <form class="list-settings__form" [formGroup]="shareForm" (ngSubmit)="onShare()">
-      <mat-form-field appearance="outline">
-        <mat-label>Usernames</mat-label>
-        <input matInput formControlName="usernames" placeholder="partner, friend2" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Or share with a group</mat-label>
-        <mat-select formControlName="shareGroupId">
-          <mat-option value="">None</mat-option>
-          @for (group of shareGroups; track group.id) {
-            <mat-option [value]="group.id">{{ group.name }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Role</mat-label>
-        <mat-select formControlName="role">
-          <mat-option value="editor">Editor</mat-option>
-          <mat-option value="viewer">Viewer</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <button mat-stroked-button type="submit" [disabled]="sharingBusy">Add people</button>
-    </form>
-    @if (shareSuccess) {
-      <p class="list-settings__success">{{ shareSuccess }}</p>
-    }
-    @if (shareError) {
-      <p class="list-settings__error">{{ shareError }}</p>
-    }
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Description (optional)</mat-label>
+                <input matInput formControlName="description" />
+              </mat-form-field>
 
-    <h3>Share groups</h3>
-    <form class="list-settings__form" [formGroup]="groupForm" (ngSubmit)="onCreateGroup()">
-      <mat-form-field appearance="outline">
-        <mat-label>Group name</mat-label>
-        <input matInput formControlName="name" placeholder="Us" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Usernames</mat-label>
-        <input matInput formControlName="usernames" placeholder="partner, friend2" />
-      </mat-form-field>
-      <button mat-stroked-button type="submit" [disabled]="sharingBusy">Create group</button>
-    </form>
-    @if (groupError) {
-      <p class="list-settings__error">{{ groupError }}</p>
-    }
-    @if (shareGroups.length > 0) {
-      <ul class="list-settings__member-list">
-        @for (group of shareGroups; track group.id) {
-          <li class="list-settings__member">
-            <div class="list-settings__property-text">
-              <span class="list-settings__property-name">{{ group.name }}</span>
-              <span class="list-settings__property-meta">
-                {{ group.members.length }} member{{ group.members.length === 1 ? '' : 's' }}
-              </span>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Type</mat-label>
+                <mat-select formControlName="type">
+                  @for (option of attributeTypeOptions; track option.value) {
+                    <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <div class="list-settings__property-form-actions">
+                <button mat-stroked-button type="button" (click)="onAddProperty()">
+                  Add property
+                </button>
+                <button mat-button type="button" (click)="onCancelPropertyForm()">Cancel</button>
+              </div>
             </div>
-            <button
-              mat-icon-button
-              type="button"
-              aria-label="Delete group"
-              [disabled]="sharingBusy"
-              (click)="onDeleteGroup(group)"
-            >
-              <mat-icon>close</mat-icon>
-            </button>
-          </li>
-        }
-      </ul>
-    }
-  </details>
+          }
 
-  <div class="list-settings__danger">
-    <button mat-stroked-button color="warn" type="button" (click)="onDelete()">Delete list</button>
-    @if (deleteError) {
-      <p class="list-settings__error">{{ deleteError }}</p>
-    }
-  </div>
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="!propertiesDirty"
+            (click)="onSaveProperties()"
+          >
+            Save properties
+          </button>
+
+          @if (saveSuccess && selectedTabIndex === 1) {
+            <p class="list-settings__success">Saved.</p>
+          }
+          @if (saveError && selectedTabIndex === 1) {
+            <p class="list-settings__error">{{ saveError }}</p>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Display">
+        <div class="list-settings__tab">
+          <form class="list-settings__form" [formGroup]="viewForm" (ngSubmit)="onSaveViewSettings()">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>View mode</mat-label>
+              <mat-select formControlName="viewMode">
+                <mat-option value="list">List</mat-option>
+                <mat-option value="grid">Grid</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <fieldset class="list-settings__fields">
+              <legend>Visible fields</legend>
+              @for (field of availableFields(); track field.key) {
+                <mat-checkbox
+                  [checked]="isFieldVisible(field.key)"
+                  [disabled]="field.key === 'name'"
+                  (change)="onToggleField(field.key, $event.checked)"
+                  color="primary"
+                >
+                  {{ field.label }}
+                </mat-checkbox>
+              }
+            </fieldset>
+
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              [disabled]="!displayDirty"
+            >
+              Save display settings
+            </button>
+          </form>
+
+          @if (saveSuccess && selectedTabIndex === 2) {
+            <p class="list-settings__success">Saved.</p>
+          }
+          @if (saveError && selectedTabIndex === 2) {
+            <p class="list-settings__error">{{ saveError }}</p>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Sharing">
+        <div class="list-settings__tab">
+          <p class="list-settings__hint">
+            Create a one-time code, then share it via your messaging app. Each code works for a
+            single person and is burnt once used.
+          </p>
+
+          <form
+            class="list-settings__form"
+            [formGroup]="inviteForm"
+            (ngSubmit)="onCreateAndShareInvite()"
+          >
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Role for invitee</mat-label>
+              <mat-select formControlName="role">
+                @for (option of memberRoleOptions; track option.value) {
+                  <mat-option [value]="option.value">
+                    {{ option.label }} ({{ option.description }})
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <button mat-flat-button color="primary" type="submit" [disabled]="sharingBusy">
+              <mat-icon>share</mat-icon>
+              Share
+            </button>
+          </form>
+
+          @if (lastCreatedInvite && !lastCreatedInvite.isUsed) {
+            <div class="list-settings__invite-code">
+              <span class="list-settings__invite-code-value">{{ lastCreatedInvite.code }}</span>
+              <div class="list-settings__invite-actions">
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="onShareExistingInvite(lastCreatedInvite)"
+                >
+                  Share again
+                </button>
+                <button mat-stroked-button type="button" (click)="onCopyInvite(lastCreatedInvite)">
+                  Copy
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (inviteSuccess) {
+            <p class="list-settings__success">{{ inviteSuccess }}</p>
+          }
+          @if (inviteError) {
+            <p class="list-settings__error">{{ inviteError }}</p>
+          }
+
+          <h3>Invite codes</h3>
+          @if (activeInvites.length === 0) {
+            <p class="list-settings__hint">No unused invite codes.</p>
+          } @else {
+            <ul class="list-settings__member-list">
+              @for (invite of activeInvites; track invite.id) {
+                <li class="list-settings__member">
+                  <div class="list-settings__property-text">
+                    <span class="list-settings__property-name">{{ invite.code }}</span>
+                    <span class="list-settings__property-meta">
+                      {{ roleLabel(invite.role) }} · unused
+                    </span>
+                  </div>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Share code"
+                    [disabled]="sharingBusy"
+                    (click)="onShareExistingInvite(invite)"
+                  >
+                    <mat-icon>share</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Delete unused code"
+                    [disabled]="sharingBusy"
+                    (click)="onDeleteInvite(invite)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (usedInvites.length > 0) {
+            <button
+              mat-button
+              type="button"
+              class="list-settings__used-toggle"
+              (click)="showUsedInvites = !showUsedInvites"
+            >
+              {{ showUsedInvites ? 'Hide' : 'Show' }} used codes ({{ usedInvites.length }})
+            </button>
+
+            @if (showUsedInvites) {
+              <ul class="list-settings__member-list list-settings__member-list--muted">
+                @for (invite of usedInvites; track invite.id) {
+                  <li class="list-settings__member">
+                    <div class="list-settings__property-text">
+                      <span class="list-settings__property-name">{{ invite.code }}</span>
+                      <span class="list-settings__property-meta">
+                        {{ roleLabel(invite.role) }} · used by
+                        {{ invite.usedByDisplayName || invite.usedByUsername || 'someone' }}
+                      </span>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          }
+
+          @if (members.length > 0) {
+            <h3>People with access</h3>
+            <ul class="list-settings__member-list">
+              @for (member of members; track member.userId) {
+                <li class="list-settings__member list-settings__member--role">
+                  <div class="list-settings__property-text">
+                    <span class="list-settings__property-name">
+                      {{ member.displayName || member.username }}
+                    </span>
+                    <span class="list-settings__property-meta">{{ '@' + member.username }}</span>
+                  </div>
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="list-settings__role-select"
+                  >
+                    <mat-label>Access</mat-label>
+                    <mat-select
+                      [value]="member.role"
+                      [disabled]="sharingBusy"
+                      (selectionChange)="onMemberRoleChange(member, $event.value)"
+                    >
+                      @for (option of memberRoleOptions; track option.value) {
+                        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Remove share"
+                    [disabled]="sharingBusy"
+                    (click)="onUnshare(member)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+
+          @if (shareError) {
+            <p class="list-settings__error">{{ shareError }}</p>
+          }
+
+          <details class="list-settings__advanced">
+            <summary>Add by username (optional)</summary>
+            <p class="list-settings__hint">
+              If you already know their Remba username, you can add them directly.
+            </p>
+            <form class="list-settings__form" [formGroup]="shareForm" (ngSubmit)="onShare()">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Usernames</mat-label>
+                <input matInput formControlName="usernames" placeholder="partner, friend2" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Or share with a group</mat-label>
+                <mat-select formControlName="shareGroupId">
+                  <mat-option value="">None</mat-option>
+                  @for (group of shareGroups; track group.id) {
+                    <mat-option [value]="group.id">{{ group.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Role</mat-label>
+                <mat-select formControlName="role">
+                  @for (option of memberRoleOptions; track option.value) {
+                    <mat-option [value]="option.value">{{ option.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <button mat-stroked-button type="submit" [disabled]="sharingBusy">Add people</button>
+            </form>
+            @if (shareSuccess) {
+              <p class="list-settings__success">{{ shareSuccess }}</p>
+            }
+
+            <h3>Share groups</h3>
+            <form class="list-settings__form" [formGroup]="groupForm" (ngSubmit)="onCreateGroup()">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Group name</mat-label>
+                <input matInput formControlName="name" placeholder="Us" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Usernames</mat-label>
+                <input matInput formControlName="usernames" placeholder="partner, friend2" />
+              </mat-form-field>
+              <button mat-stroked-button type="submit" [disabled]="sharingBusy">Create group</button>
+            </form>
+            @if (groupError) {
+              <p class="list-settings__error">{{ groupError }}</p>
+            }
+            @if (shareGroups.length > 0) {
+              <ul class="list-settings__member-list">
+                @for (group of shareGroups; track group.id) {
+                  <li class="list-settings__member">
+                    <div class="list-settings__property-text">
+                      <span class="list-settings__property-name">{{ group.name }}</span>
+                      <span class="list-settings__property-meta">
+                        {{ group.members.length }} member{{ group.members.length === 1 ? '' : 's' }}
+                      </span>
+                    </div>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      aria-label="Delete group"
+                      [disabled]="sharingBusy"
+                      (click)="onDeleteGroup(group)"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </details>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   }
 </section>

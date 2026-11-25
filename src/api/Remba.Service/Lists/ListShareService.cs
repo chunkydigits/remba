@@ -258,6 +258,47 @@ public class ListShareService : IListShareService
             .ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<ListShareMemberDto>> UpdateMemberRoleAsync(
+        string userId,
+        string listId,
+        string memberUserId,
+        string role,
+        CancellationToken cancellationToken = default)
+    {
+        var access = await RequireAccessAsync(userId, listId, cancellationToken).ConfigureAwait(false);
+        if (!ListShareRoles.CanManageShares(access.Role))
+        {
+            throw new UnauthorizedAccessException("Only the list owner can manage sharing.");
+        }
+
+        if (StringUtilities.IsNullOrWhiteSpace(memberUserId))
+        {
+            throw new ArgumentException("Member user id is required.", nameof(memberUserId));
+        }
+
+        var normalisedRole = NormaliseRole(role);
+        var shareId = BuildShareId(listId, memberUserId);
+
+        var ownerCopy = await _listShareRepository
+            .GetAsync(access.List.OwnerId, shareId, cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new KeyNotFoundException("Share was not found.");
+
+        ownerCopy.Role = normalisedRole;
+        await _listShareRepository.UpsertAsync(ownerCopy, cancellationToken).ConfigureAwait(false);
+
+        var memberCopy = await _listShareRepository
+            .GetAsync(memberUserId, shareId, cancellationToken)
+            .ConfigureAwait(false);
+        if (memberCopy is not null)
+        {
+            memberCopy.Role = normalisedRole;
+            await _listShareRepository.UpsertAsync(memberCopy, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await GetMembersAsync(userId, listId, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task LeaveAsync(string userId, string listId, CancellationToken cancellationToken = default)
     {
         var access = await RequireAccessAsync(userId, listId, cancellationToken).ConfigureAwait(false);
@@ -355,7 +396,7 @@ public class ListShareService : IListShareService
 
         if (!ListShareRoles.IsValidMemberRole(value))
         {
-            throw new ArgumentException("Role must be 'editor' or 'viewer'.");
+            throw new ArgumentException("Role must be 'editor', 'adder', or 'viewer'.");
         }
 
         return value;

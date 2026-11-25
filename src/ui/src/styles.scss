@@ -87,19 +87,39 @@ body {
   overflow-y: auto;
 }
 
-// Keep long pages (e.g. Developer) scrollable — Material drawer content defaults clip at the viewport.
+// Keep long pages scrollable — Material drawer defaults (height:100% + overflow:auto)
+// clip content at the viewport. !important beats Material host styles that reappear
+// across versions.
 .page-template.mat-drawer-container {
-  height: auto;
-  max-height: none;
+  height: auto !important;
+  max-height: none !important;
   min-height: 100dvh;
-  overflow: visible;
+  overflow: visible !important;
 }
 
 .page-template.mat-drawer-container > .mat-drawer-content {
-  height: auto;
-  max-height: none;
+  height: auto !important;
+  max-height: none !important;
   min-height: 100dvh;
-  overflow: visible;
+  overflow: visible !important;
+}
+
+// mat-tab-group pins inactive bodies absolutely and uses overflow:hidden + a fixed
+// wrapper height, which clips tall tabs (e.g. Settings → Sharing) after async load.
+.list-settings__tabs.mat-mdc-tab-group {
+  .mat-mdc-tab-body-wrapper {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .mat-mdc-tab-body.mat-mdc-tab-body-active {
+    overflow: visible !important;
+  }
+
+  .mat-mdc-tab-body-content {
+    height: auto !important;
+    overflow: visible !important;
+  }
 }
 
 *,

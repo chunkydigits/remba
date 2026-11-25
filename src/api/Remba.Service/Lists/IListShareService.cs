@@ -32,6 +32,13 @@ public interface IListShareService
         string memberUserId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ListShareMemberDto>> UpdateMemberRoleAsync(
+        string userId,
+        string listId,
+        string memberUserId,
+        string role,
+        CancellationToken cancellationToken = default);
+
     Task LeaveAsync(string userId, string listId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ListShareDbo>> GetSharesForMemberAsync(

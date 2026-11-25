@@ -254,7 +254,7 @@ public class ListInviteService : IListInviteService
 
         if (!ListShareRoles.IsValidMemberRole(value))
         {
-            throw new ArgumentException("Role must be 'editor' or 'viewer'.");
+            throw new ArgumentException("Role must be 'editor', 'adder', or 'viewer'.");
         }
 
         return value;

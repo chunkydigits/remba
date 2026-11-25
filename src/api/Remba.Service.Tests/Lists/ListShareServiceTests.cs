@@ -129,4 +129,86 @@ public class ListShareServiceTests
         Assert.Equal(ListShareRoles.Viewer, access!.Role);
         Assert.Equal("owner1", access.List.OwnerId);
     }
+
+    [Fact]
+    public async Task UpdateMemberRoleAsync_WhenOwner_ThenShouldUpdateBothShareCopies()
+    {
+        var list = new ListDbo
+        {
+            Id = "list1",
+            OwnerId = "owner1",
+            Name = "Ideas",
+            RecordType = ListRecordTypes.List
+        };
+
+        var ownerCopy = new ListShareDbo
+        {
+            Id = "share:list1:partner1",
+            OwnerId = "owner1",
+            ListId = "list1",
+            ListOwnerId = "owner1",
+            MemberUserId = "partner1",
+            MemberUsername = "partner",
+            MemberDisplayName = "Partner",
+            Role = ListShareRoles.Editor
+        };
+        var memberCopy = new ListShareDbo
+        {
+            Id = "share:list1:partner1",
+            OwnerId = "partner1",
+            ListId = "list1",
+            ListOwnerId = "owner1",
+            MemberUserId = "partner1",
+            MemberUsername = "partner",
+            MemberDisplayName = "Partner",
+            Role = ListShareRoles.Editor
+        };
+
+        _listRepository
+            .Setup(repository => repository.GetByIdAsync("owner1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(list);
+        _shareRepository
+            .Setup(repository => repository.GetAsync("owner1", "share:list1:partner1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ownerCopy);
+        _shareRepository
+            .Setup(repository => repository.GetAsync("partner1", "share:list1:partner1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(memberCopy);
+        _shareRepository
+            .Setup(repository => repository.GetByListAsync("owner1", "list1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new ListShareDbo
+                {
+                    Id = "share:list1:partner1",
+                    OwnerId = "owner1",
+                    ListId = "list1",
+                    ListOwnerId = "owner1",
+                    MemberUserId = "partner1",
+                    MemberUsername = "partner",
+                    MemberDisplayName = "Partner",
+                    Role = ListShareRoles.Adder
+                }
+            ]);
+
+        var result = await CreateService().UpdateMemberRoleAsync(
+            "owner1",
+            "list1",
+            "partner1",
+            ListShareRoles.Adder);
+
+        Assert.Single(result);
+        Assert.Equal(ListShareRoles.Adder, result[0].Role);
+        _shareRepository.Verify(
+            repository => repository.UpsertAsync(
+                It.Is<ListShareDbo>(share =>
+                    share.OwnerId == "owner1" && share.Role == ListShareRoles.Adder),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _shareRepository.Verify(
+            repository => repository.UpsertAsync(
+                It.Is<ListShareDbo>(share =>
+                    share.OwnerId == "partner1" && share.Role == ListShareRoles.Adder),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }

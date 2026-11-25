@@ -53,7 +53,7 @@ public class EntryService : IEntryService
             throw new ArgumentException("List id is required.", nameof(listId));
         }
 
-        var access = await RequireEditableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
+        var access = await RequireAddableListAsync(ownerId, listId, cancellationToken).ConfigureAwait(false);
         var list = access.List;
         var listOwnerId = list.OwnerId;
         var enrichment = await ResolveEnrichmentAsync(list, request, cancellationToken).ConfigureAwait(false);
@@ -696,6 +696,23 @@ public class EntryService : IEntryService
         string listId,
         CancellationToken cancellationToken) =>
         await _listShareService.RequireAccessAsync(userId, listId, cancellationToken).ConfigureAwait(false);
+
+    private async Task<ListAccessContext> RequireAddableListAsync(
+        string userId,
+        string listId,
+        CancellationToken cancellationToken)
+    {
+        var access = await _listShareService
+            .RequireAccessAsync(userId, listId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!ListShareRoles.CanAddEntries(access.Role))
+        {
+            throw new UnauthorizedAccessException("You do not have permission to add items to this list.");
+        }
+
+        return access;
+    }
 
     private async Task<ListAccessContext> RequireEditableListAsync(
         string userId,

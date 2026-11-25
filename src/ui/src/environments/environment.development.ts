@@ -6,4 +6,9 @@ export const environment = {
     clientId: 'VgRe2f4ao5A4WaH8ckLstNHk7vrbupgS',
     audience: 'https://api.remba.it',
   },
+  devFrame: {
+    enabled: true,
+    widthPx: 3,
+    color: '#ff6a00',
+  },
 };

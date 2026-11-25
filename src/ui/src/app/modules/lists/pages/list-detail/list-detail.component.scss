@@ -31,6 +31,7 @@
   gap: 0.35rem;
   padding: 0;
   min-width: 0;
+  text-decoration: none;
 }
 
 .list-detail__action:disabled {
@@ -72,11 +73,20 @@
   line-height: 1.2;
 }
 
+.list-detail__menu-header,
 .list-detail__panel-header {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   margin-bottom: 0.5rem;
+}
+
+.list-detail__menu-header .list-detail__panel-title {
+  flex: 1;
+}
+
+.list-detail__panel-close {
+  margin-left: auto;
 }
 
 .list-detail__panel-title {
@@ -86,11 +96,12 @@
 .list-detail__panel {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.5rem;
 }
 
 .list-detail__panel mat-form-field {
   width: 100%;
+  margin-block: 0.35rem 0.65rem;
 }
 
 .list-detail__panel-actions {

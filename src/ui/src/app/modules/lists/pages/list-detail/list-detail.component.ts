@@ -21,15 +21,12 @@ import {
 import { ConfirmDialogComponent } from '../../../../components/confirm-dialog/confirm-dialog.component';
 import { PageTemplateComponent } from '../../../../components/page-template/page-template.component';
 import { MaterialModule } from '../../../../core/material.module';
-import { ListSettingsComponent } from '../../components/list-settings/list-settings.component';
 import { ListService } from '../../services/list.service';
 import { EntryService } from '../../services/entry.service';
 import {
   ListAttributeDefinition,
   ListDetail,
   ListFieldKey,
-  UpdateListRequest,
-  UpdateListViewSettingsRequest,
   availableFieldsForEntityType,
   defaultVisibleFields,
 } from '../../models/list.model';
@@ -41,7 +38,7 @@ import {
   parseListItems,
 } from '../../utils/entry-attributes.util';
 
-type ToolbarMode = 'closed' | 'menu' | 'search' | 'filter' | 'sort' | 'settings';
+type ToolbarMode = 'closed' | 'menu' | 'search' | 'filter' | 'sort';
 
 @Component({
   selector: 'app-list-detail',
@@ -52,7 +49,6 @@ type ToolbarMode = 'closed' | 'menu' | 'search' | 'filter' | 'sort' | 'settings'
     DragDropModule,
     MaterialModule,
     PageTemplateComponent,
-    ListSettingsComponent,
   ],
   templateUrl: './list-detail.component.html',
   styleUrl: './list-detail.component.scss',
@@ -66,9 +62,6 @@ export class ListDetailComponent {
   private readonly router = inject(Router);
 
   private readonly listReload$ = new BehaviorSubject<void>(undefined);
-  private readonly saveDetailsRequests = new Subject<UpdateListRequest>();
-  private readonly saveViewSettingsRequests = new Subject<UpdateListViewSettingsRequest>();
-  private readonly deleteRequests = new Subject<void>();
   private readonly deleteEntryRequests = new Subject<string>();
   private readonly toggleReadRequests = new Subject<ListEntry>();
   private readonly toggleVisitedRequests = new Subject<ListEntry>();
@@ -80,9 +73,6 @@ export class ListDetailComponent {
   });
 
   toolbarMode: ToolbarMode = 'closed';
-  saveError = '';
-  saveSuccess = false;
-  deleteError = '';
   entryError = '';
   displayedEntries: ListEntry[] = [];
 
@@ -247,71 +237,6 @@ export class ListDetailComponent {
     shareReplay({ bufferSize: 1, refCount: true }),
   );
 
-  readonly saveDetailsResult$: Observable<ListDetail | null> = this.saveDetailsRequests.pipe(
-    switchMap((request) => {
-      const listId = this.route.snapshot.paramMap.get('listId');
-      if (!listId) {
-        return of(null);
-      }
-
-      this.saveError = '';
-      this.saveSuccess = false;
-      return this.listService.update(listId, request).pipe(
-        tap(() => {
-          this.saveSuccess = true;
-          this.listReload$.next();
-        }),
-        catchError((error) => {
-          this.saveError = error?.error?.message || 'Unable to update list.';
-          return of(null);
-        }),
-      );
-    }),
-  );
-
-  readonly saveViewSettingsResult$: Observable<ListDetail | null> = this.saveViewSettingsRequests.pipe(
-    switchMap((request) => {
-      const listId = this.route.snapshot.paramMap.get('listId');
-      if (!listId) {
-        return of(null);
-      }
-
-      this.saveError = '';
-      this.saveSuccess = false;
-      return this.listService.updateViewSettings(listId, request).pipe(
-        tap(() => {
-          this.saveSuccess = true;
-          this.listReload$.next();
-        }),
-        catchError((error) => {
-          this.saveError = error?.error?.message || 'Unable to update display settings.';
-          return of(null);
-        }),
-      );
-    }),
-  );
-
-  readonly deleteResult$: Observable<boolean | null> = this.deleteRequests.pipe(
-    switchMap(() => {
-      const listId = this.route.snapshot.paramMap.get('listId');
-      if (!listId) {
-        return of(null);
-      }
-
-      this.deleteError = '';
-      return this.listService.delete(listId).pipe(
-        tap(() => {
-          void this.router.navigate(['/lists']);
-        }),
-        map(() => true),
-        catchError((error) => {
-          this.deleteError = error?.error?.message || 'Unable to delete list.';
-          return of(false);
-        }),
-      );
-    }),
-  );
-
   readonly deleteEntryResult$: Observable<boolean | null> = this.deleteEntryRequests.pipe(
     switchMap((entryId) => {
       const listId = this.route.snapshot.paramMap.get('listId');
@@ -402,6 +327,10 @@ export class ListDetailComponent {
     this.toolbarMode = 'menu';
   }
 
+  closeToolbar(): void {
+    this.toolbarMode = 'closed';
+  }
+
   onSearchSubmit(): void {
     this.applyFiltersFromPanels();
   }
@@ -428,52 +357,6 @@ export class ListDetailComponent {
 
   onSortApply(): void {
     this.applyFiltersFromPanels();
-  }
-
-  onSaveDetails(request: UpdateListRequest): void {
-    this.saveDetailsRequests.next(request);
-  }
-
-  onSaveViewSettings(request: UpdateListViewSettingsRequest): void {
-    this.saveViewSettingsRequests.next(request);
-  }
-
-  onDeleteList(): void {
-    this.deleteRequests.next();
-  }
-
-  onSharesChanged(): void {
-    this.listReload$.next();
-  }
-
-  onLeaveList(): void {
-    const listId = this.route.snapshot.paramMap.get('listId');
-    if (!listId) {
-      return;
-    }
-
-    this.dialog
-      .open(ConfirmDialogComponent, {
-        width: '22rem',
-        data: {
-          title: 'Leave shared list?',
-          message: 'You will lose access until someone shares it with you again.',
-          confirmLabel: 'Leave',
-          cancelLabel: 'Stay',
-        },
-      })
-      .afterClosed()
-      .pipe(filter((confirmed): confirmed is true => confirmed === true))
-      .subscribe(() => {
-        this.listService.leave(listId).subscribe({
-          next: () => {
-            void this.router.navigate(['/lists']);
-          },
-          error: (error) => {
-            this.saveError = error?.error?.message || 'Unable to leave list.';
-          },
-        });
-      });
   }
 
   onDeleteEntry(entry: ListEntry): void {

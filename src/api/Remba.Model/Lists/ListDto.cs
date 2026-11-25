@@ -21,7 +21,7 @@ public class ListDto
     public ListViewSettingsDto ViewSettings { get; set; } = new();
 
     /// <summary>
-    /// Caller's role on this list: owner, editor, or viewer.
+    /// Caller's role on this list: owner, editor, adder, or viewer.
     /// </summary>
     public string MyRole { get; set; } = ListShareRoles.Owner;
 

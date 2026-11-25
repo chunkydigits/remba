@@ -85,7 +85,7 @@ public class ListInviteDto
 public class CreateListInviteRequest
 {
     /// <summary>
-    /// editor or viewer. Defaults to editor.
+    /// editor, adder, or viewer. Defaults to editor.
     /// </summary>
     public string? Role { get; set; }
 }

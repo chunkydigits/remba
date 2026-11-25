@@ -1,1 +1,10 @@
+@if (devFrame.enabled) {
+  <div
+    class="app-dev-frame"
+    [style.border-width.px]="devFrame.widthPx"
+    [style.border-color]="devFrame.color"
+    aria-hidden="true"
+  ></div>
+}
+
 <router-outlet></router-outlet>

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -22,10 +22,11 @@ import {
   providedIn: 'root',
 })
 export class ListService {
-  private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/lists`;
   private readonly shareGroupsUrl = `${environment.apiBaseUrl}/api/share-groups`;
   private readonly invitesUrl = `${environment.apiBaseUrl}/api/list-invites`;
+
+  constructor(private readonly http: HttpClient) {}
 
   getOwnLists(): Observable<ListSummary[]> {
     return this.http.get<ListSummary[]>(this.baseUrl);
@@ -60,6 +61,17 @@ export class ListService {
 
   share(listId: string, request: ShareListRequest): Observable<ListShareMember[]> {
     return this.http.post<ListShareMember[]>(`${this.baseUrl}/${listId}/shares`, request);
+  }
+
+  updateMemberRole(
+    listId: string,
+    memberUserId: string,
+    request: { role: string },
+  ): Observable<ListShareMember[]> {
+    return this.http.put<ListShareMember[]>(
+      `${this.baseUrl}/${listId}/shares/${memberUserId}`,
+      request,
+    );
   }
 
   unshare(listId: string, memberUserId: string): Observable<{ message: string }> {

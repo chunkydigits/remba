@@ -61,10 +61,18 @@ public static class ListShareRoles
 
     public const string Editor = "editor";
 
+    /// <summary>
+    /// Can add items, but cannot edit or remove existing ones.
+    /// </summary>
+    public const string Adder = "adder";
+
     public const string Viewer = "viewer";
 
     public static bool IsValidMemberRole(string role) =>
-        role is Editor or Viewer;
+        role is Editor or Adder or Viewer;
+
+    public static bool CanAddEntries(string role) =>
+        role is Owner or Editor or Adder;
 
     public static bool CanEditEntries(string role) =>
         role is Owner or Editor;

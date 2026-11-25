@@ -1,4 +1,12 @@
-export type ListShareRole = 'owner' | 'editor' | 'viewer' | string;
+export type ListShareRole = 'owner' | 'editor' | 'adder' | 'viewer' | string;
+
+export type ListMemberRole = 'editor' | 'adder' | 'viewer';
+
+export const LIST_MEMBER_ROLE_OPTIONS: { value: ListMemberRole; label: string; description: string }[] = [
+  { value: 'editor', label: 'Editor', description: 'Can add and edit items' },
+  { value: 'adder', label: 'Add only', description: 'Can add items, not edit existing ones' },
+  { value: 'viewer', label: 'Viewer', description: 'Read only' },
+];
 
 export interface ListShareMember {
   userId: string;
@@ -12,8 +20,12 @@ export interface ListShareMember {
 export interface ShareListRequest {
   usernames?: string[];
   shareGroupId?: string;
-  role?: 'editor' | 'viewer' | string;
+  role?: ListMemberRole | string;
   shareLabel?: string;
+}
+
+export interface UpdateListShareRoleRequest {
+  role: ListMemberRole | string;
 }
 
 export interface ShareGroupMember {
@@ -150,7 +162,7 @@ export interface ListInvite {
 }
 
 export interface CreateListInviteRequest {
-  role?: 'editor' | 'viewer' | string;
+  role?: ListMemberRole | string;
 }
 
 export interface RedeemListInviteRequest {
