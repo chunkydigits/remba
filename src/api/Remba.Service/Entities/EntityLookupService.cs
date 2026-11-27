@@ -141,7 +141,7 @@ public class EntityLookupService : IEntityLookupService
             Genre = GetMetadata(entity, "genre"),
             Themes = GetMetadata(entity, "themes"),
             Year = GetMetadata(entity, "year"),
-            ImageUrl = GetMetadata(entity, "imageUrl"),
+            ImageUrl = FlagUrlUtilities.Normalise(GetMetadata(entity, "imageUrl")),
             Link = entity.Link,
             Subtitle = GetMetadata(entity, "author")
                 ?? GetMetadata(entity, "director")

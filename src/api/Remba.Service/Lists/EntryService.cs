@@ -140,9 +140,10 @@ public class EntryService : IEntryService
                     IdentifierValue = NormaliseOptional(identifierValue),
                     Name = entity.Name,
                     Link = entity.Link ?? NormaliseOptional(request.Link),
-                    ImageUrl = enrichment.ImageUrl
+                    ImageUrl = FlagUrlUtilities.Normalise(
+                        enrichment.ImageUrl
                         ?? NormaliseOptional(request.ImageUrl)
-                        ?? GetMetadata(entity.Metadata, "imageUrl"),
+                        ?? GetMetadata(entity.Metadata, "imageUrl")),
                     Author = enrichment.Author,
                     Director = enrichment.Director,
                     Actors = enrichment.Actors,
@@ -335,7 +336,7 @@ public class EntryService : IEntryService
 
         if (request.ImageUrl is not null)
         {
-            entry.ImageUrl = NormaliseOptional(request.ImageUrl);
+            entry.ImageUrl = FlagUrlUtilities.Normalise(request.ImageUrl);
         }
 
         if (request.Author is not null)
@@ -604,8 +605,9 @@ public class EntryService : IEntryService
             Genre = NormaliseOptional(request.Genre) ?? NormaliseOptional(GetMetadata(request.Metadata, "genre")),
             Themes = NormaliseOptional(request.Themes) ?? NormaliseOptional(GetMetadata(request.Metadata, "themes")),
             Year = NormaliseOptional(GetMetadata(request.Metadata, "year")),
-            ImageUrl = NormaliseOptional(request.ImageUrl)
-                ?? NormaliseOptional(GetMetadata(request.Metadata, "imageUrl")),
+            ImageUrl = FlagUrlUtilities.Normalise(
+                NormaliseOptional(request.ImageUrl)
+                ?? NormaliseOptional(GetMetadata(request.Metadata, "imageUrl"))),
             Link = NormaliseOptional(request.Link)
         };
 
@@ -637,7 +639,7 @@ public class EntryService : IEntryService
         enrichment.Genre ??= NormaliseOptional(detail.Genre);
         enrichment.Themes ??= NormaliseOptional(detail.Themes);
         enrichment.Year ??= NormaliseOptional(detail.Year);
-        enrichment.ImageUrl ??= NormaliseOptional(detail.ImageUrl);
+        enrichment.ImageUrl ??= FlagUrlUtilities.Normalise(detail.ImageUrl);
         enrichment.Link ??= NormaliseOptional(detail.Link);
 
         if (!string.IsNullOrWhiteSpace(detail.Name))
@@ -1091,7 +1093,7 @@ public class EntryService : IEntryService
 
         if (needsImage)
         {
-            dto.ImageUrl = GetMetadata(entity.Metadata, "imageUrl");
+            dto.ImageUrl = FlagUrlUtilities.Normalise(GetMetadata(entity.Metadata, "imageUrl"));
         }
 
         if (needsWatchProviders && entity.WatchProviders.Count > 0)
@@ -1115,7 +1117,7 @@ public class EntryService : IEntryService
             IdentifierValue = entry.IdentifierValue,
             Name = entry.Name,
             Link = entry.Link,
-            ImageUrl = entry.ImageUrl,
+            ImageUrl = FlagUrlUtilities.Normalise(entry.ImageUrl),
             Author = entry.Author,
             Director = entry.Director,
             Actors = entry.Actors,

@@ -53,6 +53,22 @@ public class CountryLookupProviderTests
         Assert.Equal("https://flagdex.net/flags/fr.svg", result.ImageUrl);
     }
 
+    [Fact]
+    public async Task SearchAsync_WhenFlagIsFileUri_ThenShouldReturnHttpsFlagUrl()
+    {
+        var provider = CreateProvider(
+            """
+            [
+              {"name":"New Zealand","iso2":"NZ","iso3":"NZL","capital":"Wellington","region":"Oceania","flag":"file:///flags/nz.svg"}
+            ]
+            """);
+
+        var results = await provider.SearchAsync(EntityTypes.Country, "new zealand");
+
+        Assert.Single(results);
+        Assert.Equal("https://flagdex.net/flags/nz.svg", results[0].ImageUrl);
+    }
+
     private static CountryLookupProvider CreateProvider(string json)
     {
         var handler = new StubHandler(json);

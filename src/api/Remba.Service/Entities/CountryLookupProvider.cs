@@ -158,21 +158,11 @@ public class CountryLookupProvider : IEntityLookupProvider
 
     private string BuildFlagUrl(string iso2, string? relativeFlag)
     {
-        if (!string.IsNullOrWhiteSpace(relativeFlag) && Uri.TryCreate(relativeFlag, UriKind.Absolute, out var absolute))
-        {
-            return absolute.ToString();
-        }
-
         var flagBase = string.IsNullOrWhiteSpace(_options.FlagBaseUrl)
-            ? "https://flagdex.net"
-            : _options.FlagBaseUrl.TrimEnd('/');
+            ? FlagUrlUtilities.DefaultBaseUrl
+            : _options.FlagBaseUrl;
 
-        if (!string.IsNullOrWhiteSpace(relativeFlag) && relativeFlag.StartsWith('/'))
-        {
-            return $"{flagBase}{relativeFlag}";
-        }
-
-        return $"{flagBase}/flags/{iso2.ToLowerInvariant()}.svg";
+        return FlagUrlUtilities.Build(iso2, relativeFlag, flagBase);
     }
 
     private static string? BuildWikipediaLink(string name)
